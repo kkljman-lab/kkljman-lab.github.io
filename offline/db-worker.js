@@ -4,7 +4,7 @@
 // 的那一層可以幾乎照搬 web.py 的 if/elif 分派邏輯。見 PROJECT_SPEC.md 13.3 第 2、3 項。
 import sqlite3InitModule from "/vendor/sqlite-wasm/index.mjs";
 import { AccountingValidationError, accountBalances, annualReport, createTransaction, listSyncConflicts, monthlyReport, resolveSyncConflict, transactionDetail, updateTransaction, voidTransaction } from "/offline/accounting.js";
-import { addShortcut, createBankAccount, createCategory, deactivateCategory, listBankAccounts, listCategories, listCategoryManagement, moveCategory, removeShortcut, renameCategory, reorderCategories } from "/offline/categories.js";
+import { addShortcut, createBankAccount, createCategory, deactivateCategory, listBankAccounts, listCategories, listCategoryManagement, moveCategory, removeShortcut, renameCategory, reorderCategories, seedStarterLedger } from "/offline/categories.js";
 import { createRecurringRule, deactivateRecurringRule, listRecurringRules, processRecurringRules, updateRecurringRule } from "/offline/recurring.js";
 import { ImportValidationError, importCsv } from "/offline/importer.js";
 import { exportCsv } from "/offline/exporter.js";
@@ -58,7 +58,15 @@ async function openState() {
   const accountColumns = makeDbFacade(sqlite3Db).all("PRAGMA table_info(accounts)").map((row) => row.name);
   if (!accountColumns.includes("child_order")) sqlite3Db.exec("ALTER TABLE accounts ADD COLUMN child_order INTEGER");
   if (!accountColumns.includes("icon")) sqlite3Db.exec("ALTER TABLE accounts ADD COLUMN icon TEXT");
-  return { sqlite3, sqlite3Db, poolUtil, db: makeDbFacade(sqlite3Db) };
+  const db = makeDbFacade(sqlite3Db);
+  // 真正空白的帳本（沒有匯入過 CSV，也還沒跟其他裝置同步過，例如朋友第一次用
+  // kkljman-lab.github.io 那份離線版本）預先建立一個「現金」帳戶跟使用者實際
+  // 在用的分類結構，讓一開始就有東西可以選，不用每一個分類都自己手動新增。
+  // 只在完全沒有任何帳戶時才會灌入，之後裝置真的同步到別人的資料庫時，這些
+  // 分類本來就是用固定 uuid5 算出來的 id，跟真正的資料合併時不會產生重複。
+  const hasAnyAccount = db.one("SELECT 1 AS n FROM accounts LIMIT 1");
+  if (!hasAnyAccount) await seedStarterLedger(db);
+  return { sqlite3, sqlite3Db, poolUtil, db };
 }
 
 function getState() {

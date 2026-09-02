@@ -391,3 +391,27 @@ export function repairCategoryHierarchy(db) {
   }
   db.run("INSERT INTO app_settings(setting_key, setting_value) VALUES ('category_hierarchy_v2', 'applied')");
 }
+
+// 對應桌面版 categories.py 的 DEFAULT_INCOME_CATEGORIES／seed_starter_ledger()——
+// 收入分類在真正的資料庫裡沒有「大分類」這一層（parent_name 是「固定性」「非常態性」
+// 這種純文字，不是真正的帳戶），createCategory() 的大分類驗證機制沒辦法重現這一層，
+// 這裡故意省略 parentName，讓收入分類都是未分組的，只是外觀上的簡化。
+const DEFAULT_INCOME_CATEGORIES = [
+  "薪資收入", "利息收入", "租金收入",
+  "三節獎金", "年終獎金", "獎金收入", "業績獎金", "兼職收入", "投資收入", "其它收入",
+];
+
+export async function seedStarterLedger(db) {
+  await createBankAccount(db, "現金", "asset");
+  for (const major of MAJOR_EXPENSE_CATEGORIES) {
+    await createCategory(db, major, "expense");
+  }
+  for (const [major, children] of Object.entries(EXPENSE_CATEGORY_HIERARCHY)) {
+    for (const child of children) {
+      await createCategory(db, child, "expense", major);
+    }
+  }
+  for (const name of DEFAULT_INCOME_CATEGORIES) {
+    await createCategory(db, name, "income");
+  }
+}

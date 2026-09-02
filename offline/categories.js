@@ -296,6 +296,63 @@ export async function createCategory(db, name, accountType, parentName) {
   return accountId;
 }
 
+// 對應桌面版 categories.py 的 list_bank_accounts()／create_bank_account()——資產／
+// 負債帳戶（現金、銀行存款這類）沒有分類那種大分類／小分類階層，是單純一份清單。
+// 這是第一次讓離線引擎（手機）也能自己新增這種帳戶，之前一直只能透過匯入 CSV
+// 一次建立好；kkljman-lab.github.io 那份給朋友用的離線版本從完全空白開始，
+// 沒有 CSV 可以匯入，需要這個功能才能記下第一筆帳。
+export function listBankAccounts(db, accountType) {
+  if (accountType !== "asset" && accountType !== "liability") throw new AccountingValidationError("帳戶類型必須是 asset 或 liability");
+  return db.all(
+    `SELECT a.id, a.name, a.account_type, a.parent_name, a.active, count(e.id) AS usage_count
+     FROM accounts a
+     LEFT JOIN entries e ON e.account_id=a.id
+     WHERE a.account_type=? AND a.active=1
+     GROUP BY a.id
+     ORDER BY a.source_row_number, a.name`,
+    [accountType],
+  );
+}
+
+export async function createBankAccount(db, name, accountType, parentName) {
+  name = name.trim();
+  if (!name || name.length > 80) throw new AccountingValidationError("帳戶名稱需為 1 到 80 個字元");
+  if (accountType !== "asset" && accountType !== "liability") throw new AccountingValidationError("帳戶類型必須是 asset 或 liability");
+  parentName = parentName ? parentName.trim() : null;
+  const existing = db.one("SELECT id, active FROM accounts WHERE name=? AND account_type=? LIMIT 1", [name, accountType]);
+  if (existing) {
+    if (!existing.active) db.run("UPDATE accounts SET active=1 WHERE id=?", [existing.id]);
+    return existing.id;
+  }
+  const sourceType = accountType === "asset" ? "資產" : "負債";
+  const fields = new Array(31).fill("");
+  fields[0] = "1";
+  fields[1] = name;
+  fields[2] = sourceType;
+  fields[5] = name;
+  fields[6] = "1";
+  fields[8] = "Y";
+  const accountId = await uuid5(NAMESPACE_DNS, `personal-accounting.local/category/${accountType}/${name}`);
+  db.transaction(() => {
+    db.run(
+      `INSERT OR IGNORE INTO import_batches(id, source_name, sha256, encoding, importer_version, status, source_rows, account_rows, completed_at)
+       VALUES (?, '本機新增分類', 'local-categories', 'cp950', 'local', 'completed', 0, 0, CURRENT_TIMESTAMP)`,
+      [LOCAL_BATCH_ID],
+    );
+    const rowNumber = db.one("SELECT coalesce(max(source_row_number), 0) + 1 AS n FROM accounts WHERE import_batch_id=?", [LOCAL_BATCH_ID]).n;
+    db.run(
+      `INSERT INTO accounts(id, import_batch_id, source_row_number, source_name, name, account_type, source_type, parent_name, active, source_fields_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [accountId, LOCAL_BATCH_ID, rowNumber, name, name, accountType, sourceType, parentName, JSON.stringify(fields)],
+    );
+    db.run(
+      "INSERT INTO audit_events(event_type, entity_type, entity_id, details_json) VALUES ('account_created', 'account', ?, ?)",
+      [accountId, JSON.stringify({ name, account_type: accountType })],
+    );
+  });
+  return accountId;
+}
+
 function mergeDuplicateAccount(db, duplicateId, intoId) {
   db.transaction(() => {
     db.run("UPDATE entries SET account_id=? WHERE account_id=?", [intoId, duplicateId]);

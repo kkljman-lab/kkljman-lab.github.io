@@ -4,7 +4,7 @@
 // 的那一層可以幾乎照搬 web.py 的 if/elif 分派邏輯。見 PROJECT_SPEC.md 13.3 第 2、3 項。
 import sqlite3InitModule from "/vendor/sqlite-wasm/index.mjs";
 import { AccountingValidationError, accountBalances, annualReport, createTransaction, listSyncConflicts, monthlyReport, resolveSyncConflict, transactionDetail, updateTransaction, voidTransaction } from "/offline/accounting.js";
-import { addShortcut, createCategory, deactivateCategory, listCategories, listCategoryManagement, moveCategory, removeShortcut, renameCategory, reorderCategories } from "/offline/categories.js";
+import { addShortcut, createBankAccount, createCategory, deactivateCategory, listBankAccounts, listCategories, listCategoryManagement, moveCategory, removeShortcut, renameCategory, reorderCategories } from "/offline/categories.js";
 import { createRecurringRule, deactivateRecurringRule, listRecurringRules, processRecurringRules, updateRecurringRule } from "/offline/recurring.js";
 import { ImportValidationError, importCsv } from "/offline/importer.js";
 import { exportCsv } from "/offline/exporter.js";
@@ -183,6 +183,9 @@ async function handleApi(db, poolUtil, { method, path, query, body, headers }) {
   if (method === "GET" && path === "/api/category-management") {
     return { status: 200, body: listCategoryManagement(db, query.type || "expense") };
   }
+  if (method === "GET" && path === "/api/bank-accounts") {
+    return { status: 200, body: listBankAccounts(db, query.type || "asset") };
+  }
   if (method === "POST" && path === "/api/categories") {
     let accountId;
     if (body.account_id) {
@@ -191,6 +194,10 @@ async function handleApi(db, poolUtil, { method, path, query, body, headers }) {
     } else {
       accountId = await createCategory(db, String(body.name || ""), String(body.type || ""), body.parent_name);
     }
+    return { status: 201, body: { id: accountId } };
+  }
+  if (method === "POST" && path === "/api/accounts") {
+    const accountId = await createBankAccount(db, String(body.name || ""), String(body.type || ""), body.parent_name);
     return { status: 201, body: { id: accountId } };
   }
   if (method === "PUT" && path === "/api/categories/reorder") {

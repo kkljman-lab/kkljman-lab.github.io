@@ -401,6 +401,7 @@ function setupRecurringTransactions(){
     +'<label>小分類<div id="recurring-editor-category-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div></label>'
     +'<label>帳戶<select id="recurring-editor-account"></select></label>'
     +'<label>金額<input id="recurring-editor-amount" type="number" min="1" step="1" inputmode="numeric" required></label>'
+    +'<p id="recurring-editor-dividend-hint" class="muted" style="margin:-10px 0 14px;font-size:12px">股利已計算二代健保及手續費，但仍以現實轉帳為准</p>'
     +'<label>頻率<div id="recurring-editor-frequency-buttons" style="display:flex;gap:8px;margin-top:2px">'
       +'<button type="button" class="secondary" data-frequency="yearly" style="width:auto;padding:9px 16px">每年</button>'
       +'<button type="button" class="secondary" data-frequency="monthly" style="width:auto;padding:9px 16px">每月</button>'
@@ -417,7 +418,7 @@ function setupRecurringTransactions(){
         +'<input id="recurring-editor-end" type="date" disabled style="flex:1;min-width:140px">'
       +'</div>'
     +'</div>'
-    +'<label id="recurring-editor-irregular-label">發放日期（股利已計算二代健保及手續費，但仍以現實轉帳為准）<input id="recurring-editor-irregular-date" type="date"></label>'
+    +'<label id="recurring-editor-irregular-label">發放日期<input id="recurring-editor-irregular-date" type="date"></label>'
     +'<p id="recurring-editor-error" class="error"></p>'
     +'<div class="form-actions"><button type="button" class="secondary" id="recurring-editor-cancel">取消</button><button type="submit">確定</button></div></form>';
   document.body.append(editor);
@@ -468,6 +469,7 @@ function setupRecurringTransactions(){
     $('#recurring-editor-start-label').hidden=!isRecurring;
     $('#recurring-editor-end-label').hidden=!isRecurring;
     $('#recurring-editor-irregular-label').hidden=isRecurring;
+    $('#recurring-editor-dividend-hint').hidden=isRecurring;
     $('#recurring-editor-day').required=isRecurring;
     $('#recurring-editor-start').required=isRecurring;
     $('#recurring-editor-irregular-date').required=!isRecurring;

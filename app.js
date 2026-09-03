@@ -417,7 +417,7 @@ function setupRecurringTransactions(){
         +'<input id="recurring-editor-end" type="date" disabled style="flex:1;min-width:140px">'
       +'</div>'
     +'</div>'
-    +'<label id="recurring-editor-irregular-label">日期（股利這種每次金額、日期都不太一樣的收入，發放日期確定後用這個）<input id="recurring-editor-irregular-date" type="date"></label>'
+    +'<label id="recurring-editor-irregular-label">發放日期（股利已計算二代健保及手續費，但仍以現實轉帳為准）<input id="recurring-editor-irregular-date" type="date"></label>'
     +'<p id="recurring-editor-error" class="error"></p>'
     +'<div class="form-actions"><button type="button" class="secondary" id="recurring-editor-cancel">取消</button><button type="submit">確定</button></div></form>';
   document.body.append(editor);

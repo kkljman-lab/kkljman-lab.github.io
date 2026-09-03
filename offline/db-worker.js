@@ -350,7 +350,11 @@ async function handleApi(db, poolUtil, { method, path, query, body, headers }) {
   }
   if (method === "GET" && path === "/api/offline-sync/snapshot") {
     const bytes = exportSnapshot(poolUtil, DB_NAME);
-    const filename = `accounting-offline-${deviceId(db)}-${new Date().toISOString().slice(0, 10)}.sqlite3`;
+    // toISOString() 是 UTC 時間，凌晨時段（台灣 UTC+8）算出來的日期會是昨天，
+    // 檔名只是給人看的參考，改用本地時間的年/月/日組出來比較符合直覺。
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const filename = `accounting-offline-${deviceId(db)}-${localDate}.sqlite3`;
     return { status: 200, binary: true, contentType: "application/x-sqlite3", filename, body: bytes };
   }
   if (method === "POST" && path === "/api/offline-sync/merge") {

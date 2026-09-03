@@ -12,6 +12,18 @@ function toIso(date) {
   return date.toISOString().slice(0, 10);
 }
 
+// `new Date().toISOString()` 是 UTC 時間，不是使用者當地的日期——台灣是 UTC+8，
+// 每天凌晨 0 點到 8 點之間，UTC 那邊其實還停在「前一天」，用這個算出來的
+// 「今天」會晚 8 小時才真正切換到新的一天。這裡跟桌面版的 process_recurring_rules()
+// 用 Python `date.today()`（讀本機系統時區）不一樣，導致同一筆固定收支在
+// 電腦上已經正確產生今天的帳，手機（離線引擎）在當天一大早查詢時，因為
+// 「今天」算錯還停在昨天，會晚 8 小時才產生（使用者凌晨實機回報過這個現象）。
+// 改成直接讀本地時間的年/月/日組出 YYYY-MM-DD，不透過 UTC 轉換。
+function localTodayIso() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 function lastDayOfMonth(year, month) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
@@ -68,7 +80,7 @@ export function listRecurringRules(db) {
      WHERE r.active=1
      ORDER BY r.created_at`,
   );
-  const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+  const today = new Date(localTodayIso() + "T00:00:00Z");
   return rows.map((row) => {
     const through = row.end_date ? parseDate(row.end_date, "結束日期") : new Date(Date.UTC(today.getUTCFullYear() + 5, 11, 31));
     let upcoming = occurrences(row.frequency, row.day_of_month, row.month_of_year, parseDate(row.start_date, "開始日期"), through)
@@ -130,7 +142,7 @@ export function deactivateRecurringRule(db, ruleId) {
 }
 
 export function processRecurringRules(db, today) {
-  today = today || new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+  today = today || new Date(localTodayIso() + "T00:00:00Z");
   const rows = db.all("SELECT * FROM recurring_transactions WHERE active=1");
   let created = 0;
   for (const row of rows) {

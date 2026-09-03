@@ -667,4 +667,12 @@ $('#search').placeholder='搜尋';
 $('#search').setAttribute('aria-label','搜尋摘要、大分類或小分類');
 $('#entry-form').addEventListener('submit',()=>{if(fastCalcStored!==null&&fastCalcOperator){const input=$('#entry-amount'),result=calculateFastAmount(Number(input.value)||0);input.value=String(Number(result.toFixed(6)));fastCalcStored=null;fastCalcOperator=null;updateFastAmount()}},true);
 $('.flow-arrow')?.remove();
-initialize().catch(()=>$('#transactions').innerHTML='<p>載入失敗，請稍後重試。</p>');
+initialize().catch(error=>{
+  // 原本這裡不管實際拋出什麼例外都只顯示同一句「載入失敗，請稍後重試」，
+  // 把真正的原因整個吞掉——使用者在別的裝置上遇到「載入失敗」，只能拿到
+  // 這句沒有任何線索的文字，沒辦法打開瀏覽器的開發者工具去看主控台，等於
+  // 完全沒辦法回報是卡在哪裡。改成把例外訊息直接顯示在畫面上，讓使用者
+  // 用截圖就能回報實際錯誤內容。
+  console.error('初始化失敗',error);
+  $('#transactions').innerHTML=`<p>載入失敗，請稍後重試。</p><p class="muted" style="font-size:12px;word-break:break-all">錯誤內容：${escapeHtml(String(error?.message||error))}</p>`;
+});

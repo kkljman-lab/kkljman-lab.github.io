@@ -122,10 +122,7 @@ function setupStockHoldings(){
     if(!info)return '<span class="muted" style="font-size:13px">尚未查詢股利</span>';
     if(info.error)return `<span class="error" style="font-size:13px">${escapeHtml(info.error)}</span>`;
     const yieldPercent=info.dividend_yield_percent!==null&&info.dividend_yield_percent!==undefined?`${info.dividend_yield_percent}%`:'—';
-    // 股利查回來的原始金額是「每股」，台股實際交易單位是一張（1,000 股），
-    // 換算成「每千股」比較貼近使用者實際持股規模的感覺，不要照原始的每股金額顯示。
-    const perThousand=Math.round(info.latest_amount*1000).toLocaleString();
-    return `<div class="muted" style="font-size:13px">${escapeHtml(info.frequency)}・年殖利率 ${yieldPercent}</div><div style="font-size:13px">最新股利 <b>${perThousand}</b> 元／千股（${escapeHtml(info.latest_period)}）</div><div class="muted" style="font-size:13px">除息日 ${info.ex_dividend_date||'—'}　發放日 ${info.payment_date||'—'}</div>`;
+    return `<div class="muted" style="font-size:13px">${escapeHtml(info.frequency)}・年殖利率 ${yieldPercent}</div><div style="font-size:13px">最新股利 <b>${info.latest_amount}</b> 元／股（${escapeHtml(info.latest_period)}）</div><div class="muted" style="font-size:13px">除息日 ${info.ex_dividend_date||'—'}　發放日 ${info.payment_date||'—'}</div>`;
   }
   async function saveDividendLookup(holdingId,result){
     // 存起來給下次打開視窗直接顯示，不用每次都重新查一次；失敗就算了（頂多下次

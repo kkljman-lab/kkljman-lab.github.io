@@ -62,7 +62,7 @@
         <button type="button" id="offline-drive-sync-now" disabled>立即同步</button>
       </div>
       <div id="offline-drive-key-row" style="margin-top:10px;display:none">
-        <label>同步加密金鑰（至少 12 個字元，跟桌面版備份用的金鑰不需要相同）
+        <label>同步加密金鑰（至少 12 個字元，必須跟桌面版用的金鑰完全一樣，同步才會成功；金鑰存在電腦的 data\backup-encryption.key 檔案裡，用記事本打開複製貼上即可）
           <input id="offline-drive-key" type="password" autocomplete="off" placeholder="請輸入或貼上加密金鑰">
         </label>
         <button type="button" id="offline-drive-key-save" class="secondary">儲存金鑰</button>
@@ -396,6 +396,124 @@
     });
   }
 
+  // GitHub Pages 複本專用：沒有「帳務同步」對話框可以掛，「清除本機資料」直接
+  // 變成主選單裡自己的一個項目，點下去就是原本那組確認/清除流程，不用先繞進
+  // 一個裝著一堆 Drive 欄位（这份複本永遠用不到）的設定畫面。
+  function setupStandaloneResetButton() {
+    const actions = document.querySelector(".menu-actions");
+    if (!actions) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "menu-clear-data";
+    button.innerHTML = '<span>🗑</span>清除本機資料';
+    actions.append(button);
+
+    button.addEventListener("click", async () => {
+      document.getElementById("main-menu-dialog")?.close();
+      if (!confirm("確定要清除這台裝置本機儲存的整份帳本嗎？這個動作無法復原，清除後帳本會變成全新、沒有資料的狀態。")) return;
+      button.disabled = true;
+      try {
+        await window.__offlineResetDevice();
+        localStorage.removeItem("accounting-offline-onboarded");
+        location.reload();
+      } catch (error) {
+        alert("清除失敗：" + error.message);
+        button.disabled = false;
+      }
+    });
+  }
+
+  // GitHub Pages 複本專用：朋友要求的「外觀設定」——挑一組顏色風格、調整字體
+  // 大小。顏色風格靠 app.css 裡 :root[data-theme="..."] 這幾組 CSS 變數覆寫（桌面
+  // 版／手機沒有這個 data-theme 屬性，用回預設值，完全不受影響）；字體大小用
+  // <html> 的 zoom 屬性整頁縮放（現有樣式幾乎都用 px 寫死，改 root font-size 沒用，
+  // zoom 才能連版面間距一起放大，不是只放大文字）。兩個設定都存在 localStorage，
+  // 下次打開時由 index.html 最上面那段 bootstrap script 先套用一次，才不會每次
+  // 開頁先閃一下預設樣式才變成使用者選的樣式。
+  const THEMES = [
+    { id: "default", label: "墨綠（預設）", swatch: "#173f35" },
+    { id: "navy", label: "靛藍", swatch: "#1c3a5e" },
+    { id: "wine", label: "酒紅", swatch: "#5c2233" },
+    { id: "purple", label: "深紫", swatch: "#3d2a5c" },
+    { id: "charcoal", label: "木炭灰", swatch: "#2b2f33" },
+  ];
+  const FONT_SCALES = [
+    { id: "small", label: "小", value: 0.9 },
+    { id: "normal", label: "中（預設）", value: 1 },
+    { id: "large", label: "大", value: 1.15 },
+    { id: "xlarge", label: "特大", value: 1.3 },
+  ];
+
+  function applyTheme(themeId) {
+    if (!themeId || themeId === "default") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = themeId;
+  }
+  function applyFontScale(scaleId) {
+    const scale = FONT_SCALES.find((item) => item.id === scaleId) || FONT_SCALES[1];
+    document.documentElement.style.zoom = scale.value;
+  }
+
+  function setupAppearanceButton() {
+    const actions = document.querySelector(".menu-actions");
+    if (!actions) return;
+
+    const savedTheme = localStorage.getItem("accounting-theme") || "default";
+    const savedFontScale = localStorage.getItem("accounting-font-scale") || "normal";
+    applyTheme(savedTheme);
+    applyFontScale(savedFontScale);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "menu-appearance";
+    button.innerHTML = '<span>🎨</span>外觀設定';
+    const clearDataButton = document.getElementById("menu-clear-data");
+    if (clearDataButton) clearDataButton.before(button);
+    else actions.append(button);
+
+    const dialog = document.createElement("dialog");
+    dialog.id = "appearance-dialog";
+    dialog.innerHTML = `
+      <form method="dialog" style="padding:22px">
+        <div class="dialog-title"><h2>外觀設定</h2><button type="button" class="icon-button" id="appearance-close">×</button></div>
+        <h3 style="margin-top:0">顏色風格</h3>
+        <div id="appearance-theme-row" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px">
+          ${THEMES.map((theme) => `<button type="button" data-theme-id="${theme.id}" style="width:auto;flex:1 1 auto;min-width:84px;padding:12px 8px;border-radius:12px;background:${theme.swatch};color:#fff;border:3px solid ${theme.id === savedTheme ? "#ffce57" : "transparent"}">${escapeHtml(theme.label)}</button>`).join("")}
+        </div>
+        <h3>字體大小</h3>
+        <div id="appearance-font-row" style="display:flex;gap:10px;flex-wrap:wrap">
+          ${FONT_SCALES.map((scale) => `<button type="button" data-font-id="${scale.id}" class="${scale.id === savedFontScale ? "" : "secondary"}" style="width:auto;flex:1 1 auto;min-width:74px">${escapeHtml(scale.label)}</button>`).join("")}
+        </div>
+      </form>
+    `;
+    document.body.append(dialog);
+
+    button.addEventListener("click", () => {
+      document.getElementById("main-menu-dialog")?.close();
+      dialog.showModal();
+    });
+    document.getElementById("appearance-close").addEventListener("click", () => dialog.close());
+
+    document.getElementById("appearance-theme-row").addEventListener("click", (event) => {
+      const target = event.target.closest("[data-theme-id]");
+      if (!target) return;
+      applyTheme(target.dataset.themeId);
+      localStorage.setItem("accounting-theme", target.dataset.themeId);
+      dialog.querySelectorAll("[data-theme-id]").forEach((el) => {
+        el.style.borderColor = el === target ? "#ffce57" : "transparent";
+      });
+    });
+
+    document.getElementById("appearance-font-row").addEventListener("click", (event) => {
+      const target = event.target.closest("[data-font-id]");
+      if (!target) return;
+      applyFontScale(target.dataset.fontId);
+      localStorage.setItem("accounting-font-scale", target.dataset.fontId);
+      dialog.querySelectorAll("[data-font-id]").forEach((el) => {
+        el.className = el === target ? "" : "secondary";
+      });
+    });
+  }
+
   // 主選單頂端（黃色區塊）放一顆快速「立即同步」按鈕，不用先打開「帳務同步」
   // 那個完整畫面——打開主選單時順便檢查一次雲端版本，有新版本就提示，
   // 沒有就直接說「目前已是最新版本」，按下去就跟完整畫面裡的立即同步一樣。
@@ -456,9 +574,24 @@
     checkStatus();
   }
 
-  hideUnusedDesktopSections();
-  setupGoogleDriveSync();
-  setupHiddenManualMergeInput();
-  setupResetButton();
-  setupQuickSyncButton();
+  // GitHub Pages 那份複本（給沒有自己電腦伺服器的朋友用）背後完全沒有 Google
+  // Drive 同步能力（沒有後端可以安全處理 OAuth，見 PROJECT_SPEC 13.33）——這台
+  // 裝置永遠連不上、按了也只會看到「尚未連結」，「帳務同步」「立即同步」這兩個
+  // 入口對這份複本的使用者來說純粹是干擾，只留「清除本機資料」跟朋友要求新增
+  // 的「外觀設定」。用網域判斷（kkljman-lab.github.io），桌面版／手機透過
+  // Tailscale 連自己電腦的情況網域都不是 *.github.io，完全不受影響。
+  const isGithubPagesCopy = location.hostname.endsWith(".github.io");
+
+  if (isGithubPagesCopy) {
+    document.getElementById("menu-backup")?.remove();
+    setupHiddenManualMergeInput();
+    setupStandaloneResetButton();
+    setupAppearanceButton();
+  } else {
+    hideUnusedDesktopSections();
+    setupGoogleDriveSync();
+    setupHiddenManualMergeInput();
+    setupResetButton();
+    setupQuickSyncButton();
+  }
 })();

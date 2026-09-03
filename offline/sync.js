@@ -150,8 +150,9 @@ export async function driveStatus(db, credentials) {
   try {
     const accessToken = await driveAccessToken(db, credentials);
     const files = await driveListFiles(accessToken);
-    const remoteRevision = files.reduce((max, entry) => Math.max(max, entry.revision), 0);
-    return { connected, local_revision: localRevision, remote_revision: remoteRevision, file_count: files.length };
+    const latest = files.reduce((best, entry) => (!best || entry.revision > best.revision ? entry : best), null);
+    const remoteRevision = latest ? latest.revision : 0;
+    return { connected, local_revision: localRevision, remote_revision: remoteRevision, file_count: files.length, remote_name: latest?.name ?? null };
   } catch (error) {
     // 單純查狀態這件事，不該因為 Google 那邊的授權失效（例如使用者自己去 Google
     // 帳號設定裡把這個 App 的存取權限撤銷了）就整個報錯壞掉，讓使用者連「需要
@@ -169,6 +170,10 @@ export async function drivePush(poolUtil, db, dbName, credentials) {
   if (!encryptionKey) throw new SyncError("尚未設定同步加密金鑰");
   const accessToken = await driveAccessToken(db, credentials);
   const files = await driveListFiles(accessToken);
+  return pushWithContext(poolUtil, db, dbName, encryptionKey, accessToken, files);
+}
+
+async function pushWithContext(poolUtil, db, dbName, encryptionKey, accessToken, files) {
   const remoteRevision = files.reduce((max, entry) => Math.max(max, entry.revision), 0);
   const localLastSeen = lastSeenRevision(db);
   if (remoteRevision > localLastSeen) throw new SyncError("Google Drive 上有更新的同步版本，請先下載合併後再上傳");
@@ -180,7 +185,7 @@ export async function drivePush(poolUtil, db, dbName, credentials) {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
-  const name = `${label}-${stamp}-第${nextRevision}版.pacb`;
+  const name = `${label}-${stamp}.pacb`;
   const uploaded = await driveUploadFile(accessToken, name, encrypted, { revision: String(nextRevision), device_id: device });
   setLastSeenRevision(db, nextRevision);
   return { status: "pushed", revision: nextRevision, file: uploaded.name || name };
@@ -193,6 +198,10 @@ export async function drivePull(poolUtil, db, dbName, credentials) {
   if (!encryptionKey) throw new SyncError("尚未設定同步加密金鑰");
   const accessToken = await driveAccessToken(db, credentials);
   const files = await driveListFiles(accessToken);
+  return pullWithContext(poolUtil, db, encryptionKey, accessToken, files);
+}
+
+async function pullWithContext(poolUtil, db, encryptionKey, accessToken, files) {
   if (!files.length) return { status: "empty", revision: lastSeenRevision(db) };
   const latest = files.reduce((best, entry) => (entry.revision > best.revision ? entry : best));
   const remoteRevision = latest.revision;
@@ -208,9 +217,17 @@ export async function drivePull(poolUtil, db, dbName, credentials) {
 // 畫面上「立即同步」按鈕背後就是這個：先下載合併對方的更新，再把（可能已經合併
 // 過的）目前狀態上傳回去，一次動作涵蓋雙向。也是每日自動同步（見下方
 // shouldAutoSyncNow）實際執行的動作，兩者共用同一段邏輯，行為完全一致。
+// pull／push 各自獨立呼叫時都要重新跟 Google 要一次授權金鑰、重新列一次雲端
+// 資料夾檔案清單，但這裡兩步是連續做，pull 只會下載合併到本機、完全不會動到
+// 雲端資料夾本身的檔案清單，沿用同一份授權金鑰／檔案清單給 push 判斷「雲端
+// 有沒有更新版本」仍然正確——手機通常是行動網路，少兩次網路來回感受會更明顯。
 export async function driveSyncNow(poolUtil, db, dbName, credentials) {
-  const pull = await drivePull(poolUtil, db, dbName, credentials);
-  const push = await drivePush(poolUtil, db, dbName, credentials);
+  const encryptionKey = driveEncryptionKey(db);
+  if (!encryptionKey) throw new SyncError("尚未設定同步加密金鑰");
+  const accessToken = await driveAccessToken(db, credentials);
+  const files = await driveListFiles(accessToken);
+  const pull = await pullWithContext(poolUtil, db, encryptionKey, accessToken, files);
+  const push = await pushWithContext(poolUtil, db, dbName, encryptionKey, accessToken, files);
   markAutoSyncRanToday(db);
   return { pull, push };
 }
@@ -261,6 +278,7 @@ const MERGE_TABLES = [
   "entries",
   "transaction_exchange_rates",
   "recurring_transactions",
+  "stock_holdings",
   "client_sync_receipts",
 ];
 
@@ -299,6 +317,13 @@ export async function mergeRemoteSnapshot(poolUtil, db, bytes) {
     const inserted = {};
     db.transaction(() => {
       for (const table of MERGE_TABLES) {
+        // 對方裝置的資料庫可能是舊版本（例如電腦版還沒重開、還沒套用最新的
+        // migration），這張表在 MERGE_TABLES 清單裡但對方根本還沒有是正常情況，
+        // 不該讓整個同步失敗——當作這張表這次沒有東西可合併就好。
+        const remoteHasTable = remoteDb.selectValue(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", [table],
+        );
+        if (!remoteHasTable) { inserted[table] = 0; continue; }
         const columns = db.all(`PRAGMA table_info(${table})`).map((row) => row.name);
         const columnList = columns.join(",");
         const before = db.one(`SELECT count(*) AS n FROM ${table}`).n;

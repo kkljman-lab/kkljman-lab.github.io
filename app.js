@@ -1,4 +1,5 @@
 const money = new Intl.NumberFormat('zh-TW', {style:'currency', currency:'TWD', maximumFractionDigits:0});
+const maskMoney = n => $('#privacy-toggle')?.checked ? '***' : money.format(n);
 let accounts = [];
 let splitMode = false;
 let saveAndContinue = false;
@@ -13,7 +14,7 @@ const $ = selector => document.querySelector(selector);
 const escapeHtml = value => { const node=document.createElement('div'); node.textContent=value??''; return node.innerHTML; };
 function showToast(message){let toast=$('#toast');if(!toast){toast=document.createElement('div');toast.id='toast';toast.style.cssText='position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#173f35;color:white;padding:12px 18px;border-radius:999px;box-shadow:0 8px 24px #0004;z-index:20;font-weight:700';document.body.append(toast)}toast.textContent=message;toast.hidden=false;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.hidden=true,2200)}
 function setupDialogBackButtons(){[['#entry-dialog','#entry-back'],['#detail-dialog','#detail-back']].forEach(([dialogSelector,id])=>{const dialog=$(dialogSelector),title=dialog.querySelector('.dialog-title'),button=document.createElement('button');button.type='button';button.id=id.slice(1);button.className='icon-button';button.setAttribute('aria-label','上一頁');button.textContent='‹';button.style.cssText='flex:0 0 44px;font-size:34px;margin-right:9px';title.prepend(button);const middle=button.nextElementSibling;if(middle){middle.style.flex='1';middle.style.textAlign='center'}button.addEventListener('click',()=>dialog.close())})}
-function setupMainMenu(){const findButton=text=>[...document.querySelectorAll('main button')].find(button=>button.textContent.trim()===text),originals={annual:findButton('年度收支統計'),categories:findButton('管理分類'),exportCsv:findButton('匯出 CSV'),importCsv:findButton('匯入 CSV')};Object.values(originals).forEach(button=>{const section=button?.closest('section');if(section)section.style.display='none'});const header=document.querySelector('header'),title=header.querySelector('div'),open=document.createElement('button');open.type='button';open.id='main-menu-open';open.textContent='☰';open.setAttribute('aria-label','主選單');header.insertBefore(open,title);const menu=document.createElement('dialog');menu.id='main-menu-dialog';menu.innerHTML='<div class="main-menu-shell"><section class="menu-profile"><button type="button" class="menu-close" id="main-menu-close" aria-label="關閉主選單">×</button><h2 class="menu-title">主選單</h2><div class="menu-profile-rule"></div></section><nav class="menu-actions" aria-label="帳本功能"><button type="button" id="menu-annual"><span>📊</span>年度收支統計</button><button type="button" id="menu-categories"><span>◫</span>管理分類</button><button type="button" id="menu-export"><span>⬇</span>匯出 CSV</button><button type="button" id="menu-import"><span>⬆</span>匯入 CSV</button><button type="button" id="menu-backup"><span>☁</span>帳務同步</button></nav></div>';document.body.append(menu);let menuSX=0,menuSY=0,menuTracking=false;menu.addEventListener('touchstart',e=>{const t=e.touches[0];menuSX=t.clientX;menuSY=t.clientY;menuTracking=true},{passive:true});menu.addEventListener('touchend',e=>{if(!menuTracking)return;menuTracking=false;const t=e.changedTouches[0],dx=t.clientX-menuSX,dy=t.clientY-menuSY;if(dx<-40&&Math.abs(dx)>Math.abs(dy)*1.5){menu.style.transition='transform .22s ease, opacity .22s ease';menu.style.transform='translateX(-100%)';menu.style.opacity='0';setTimeout(()=>{menu.close();menu.style.transition='';menu.style.transform='';menu.style.opacity=''},220)}},{passive:true});open.addEventListener('click',()=>menu.showModal());$('#main-menu-close').addEventListener('click',()=>menu.close());$('#menu-annual').addEventListener('click',()=>{menu.close();originals.annual?.click()});$('#menu-categories').addEventListener('click',()=>{menu.close();originals.categories?.click()});$('#menu-export').addEventListener('click',()=>{menu.close();originals.exportCsv?.click()});$('#menu-import').addEventListener('click',()=>{menu.close();originals.importCsv?.click()});const add=$('#add');add.style.left='50%';add.style.right='auto';add.style.transform='translateX(-50%)'}
+function setupMainMenu(){const findButton=text=>[...document.querySelectorAll('main button')].find(button=>button.textContent.trim()===text),originals={annual:findButton('年度收支統計'),categories:findButton('管理分類'),stocks:findButton('股票持股'),exportCsv:findButton('匯出 CSV'),importCsv:findButton('匯入 CSV')};Object.values(originals).forEach(button=>{const section=button?.closest('section');if(section)section.style.display='none'});const header=document.querySelector('header'),title=header.querySelector('div'),open=document.createElement('button');open.type='button';open.id='main-menu-open';open.textContent='☰';open.setAttribute('aria-label','主選單');header.insertBefore(open,title);const menu=document.createElement('dialog');menu.id='main-menu-dialog';menu.innerHTML='<div class="main-menu-shell"><section class="menu-profile"><button type="button" class="menu-close" id="main-menu-close" aria-label="關閉主選單">×</button><h2 class="menu-title">主選單</h2><div class="menu-profile-rule"></div></section><nav class="menu-actions" aria-label="帳本功能"><button type="button" id="menu-annual"><span>📊</span>年度收支統計</button><button type="button" id="menu-categories"><span>◫</span>管理分類</button><button type="button" id="menu-stocks"><span>📈</span>股票持股</button><button type="button" id="menu-export"><span>⬇</span>匯出 CSV</button><button type="button" id="menu-import"><span>⬆</span>匯入 CSV</button><button type="button" id="menu-backup"><span>☁</span>帳務同步</button></nav></div>';document.body.append(menu);let menuSX=0,menuSY=0,menuTracking=false;menu.addEventListener('touchstart',e=>{const t=e.touches[0];menuSX=t.clientX;menuSY=t.clientY;menuTracking=true},{passive:true});menu.addEventListener('touchend',e=>{if(!menuTracking)return;menuTracking=false;const t=e.changedTouches[0],dx=t.clientX-menuSX,dy=t.clientY-menuSY;if(dx<-40&&Math.abs(dx)>Math.abs(dy)*1.5){menu.style.transition='transform .22s ease, opacity .22s ease';menu.style.transform='translateX(-100%)';menu.style.opacity='0';setTimeout(()=>{menu.close();menu.style.transition='';menu.style.transform='';menu.style.opacity=''},220)}},{passive:true});open.addEventListener('click',()=>menu.showModal());$('#main-menu-close').addEventListener('click',()=>menu.close());$('#menu-annual').addEventListener('click',()=>{menu.close();originals.annual?.click()});$('#menu-categories').addEventListener('click',()=>{menu.close();originals.categories?.click()});$('#menu-stocks').addEventListener('click',()=>{menu.close();originals.stocks?.click()});$('#menu-export').addEventListener('click',()=>{menu.close();originals.exportCsv?.click()});$('#menu-import').addEventListener('click',()=>{menu.close();originals.importCsv?.click()});const add=$('#add');add.style.left='50%';add.style.right='auto';add.style.transform='translateX(-50%)'}
 function setupCloudSettings(){const dialog=document.createElement('dialog');dialog.id='cloud-settings-dialog';dialog.innerHTML='<form id="cloud-settings-form" style="padding:22px"><div class="dialog-title"><h2>設定</h2><button type="button" class="icon-button" id="cloud-settings-close">×</button></div><section class="notice"><strong>Google 帳號登入</strong><p style="margin:7px 0">狀態：尚未啟用</p></section><section style="margin-top:18px"><h3>Google Drive 加密備份</h3><p id="google-drive-status" class="muted">尚未連結 Google Drive</p><button type="button" id="google-connect" class="secondary">連結 Google 帳號</button><label style="grid-template-columns:auto 1fr;align-items:center"><input id="cloud-backup-enabled" type="checkbox" style="width:22px;height:22px"> 啟用每日雲端備份</label><label>每天備份時間<input id="cloud-backup-time" type="time" value="03:00"></label><small class="muted">排程會在完成 Google Drive 授權與加密金鑰設定後正式啟用。</small></section><p id="cloud-settings-message" class="muted"></p><button type="submit" style="margin-top:18px">儲存設定</button></form>';document.body.append(dialog);$('#cloud-settings-close').addEventListener('click',()=>dialog.close())}
 function setupExchangeRate(){const panel=document.createElement('section');panel.id='exchange-panel';panel.style.cssText='margin:12px 0;padding:12px;border:1px solid #d9ded9;border-radius:14px;background:#f8faf8';panel.innerHTML='<label>幣別<select id="entry-currency"><option value="TWD">新台幣 TWD</option><option value="JPY">日幣 JPY</option><option value="CNY">人民幣 CNY</option><option value="USD">美金 USD</option></select></label><div id="exchange-result" hidden><label>當下匯率（1 外幣 = 新台幣）<input id="entry-rate" readonly inputmode="decimal"></label><p id="exchange-converted" style="font-weight:800;margin:8px 0 2px"></p><small id="exchange-source" class="muted"></small></div>';$('#simple-entry .amount-field').before(panel);const detail=document.createElement('p');detail.id='detail-exchange';detail.className='notice';detail.hidden=true;$('#detail-memo').closest('label').after(detail);$('#entry-currency').addEventListener('change',loadExchangeRate);$('#entry-amount').addEventListener('input',updateConvertedAmount)}
 async function loadExchangeRate(){const currency=$('#entry-currency').value;currentExchangeRate=null;$('#exchange-result').hidden=currency==='TWD';$('#entry-amount').step=currency==='TWD'?'1':'0.01';$('#entry-amount').min=currency==='TWD'?'1':'0.01';$('.amount-field small').textContent=currency;if(currency==='TWD')return;$('#entry-rate').value='';$('#exchange-converted').textContent='取得匯率中…';$('#exchange-source').textContent='';try{const response=await fetch('/api/exchange-rate?currency='+currency);const result=await response.json();if(!response.ok)throw new Error(result.error||'無法取得匯率');currentExchangeRate=result;$('#entry-rate').value=result.twd_rate;const kind=result.rate_kind==='spot_sell'?'即期賣出參考價':'參考匯率';$('#exchange-source').textContent=`${result.source_name}・${kind}${result.quoted_at?'・'+result.quoted_at:''}${result.stale?'・暫用最近一筆匯率':''}`;updateConvertedAmount()}catch(error){$('#exchange-converted').textContent='';$('#exchange-source').textContent=error.message;$('#form-error').textContent=error.message}}
@@ -38,7 +39,6 @@ function setupFastEntryUI(){const section=$('#quick-categories');section.innerHT
 function updateFastAmount(){if(!$('#fast-amount-display'))return;$('#fast-amount-display').textContent=$('#entry-amount').value||'0';$('#fast-currency-label').textContent=$('#entry-currency')?.value||'TWD'}
 async function renderFastEntryCategories(){if(!$('#fast-entry-ui'))return;const type=$('#entry-type').value;$('#fast-type').value=type;if(type==='transfer'){$('#fast-major-tabs').innerHTML='';$('#fast-category-grid').innerHTML='<span class="muted" style="grid-column:1/-1">轉帳請使用下方的轉入與轉出帳戶</span>';$('#fast-group-select').innerHTML='<option>轉帳</option>';$('#credit-label').hidden=false;$('#debit-label').hidden=false;$('.amount-field').hidden=true;return}$('#credit-label').hidden=true;$('#debit-label').hidden=true;$('.amount-field').hidden=true;const accountSelect=type==='expense'?$('#credit-account'):$('#debit-account'),accountTypes=type==='expense'?['asset','liability']:['asset'];$('#fast-account').innerHTML=accountOptions(accountTypes);let selected=accountSelect.value;const cash=[...$('#fast-account').options].find(x=>x.textContent.trim()==='現金');if(fastEntryFirstOpen){selected=cash?.value||selected;fastEntryFirstOpen=false}if(!selected||![...$('#fast-account').options].some(x=>x.value===selected))selected=cash?.value||$('#fast-account').options[0]?.value;$('#fast-account').value=selected;if(type==='expense')$('#credit-account').value=selected;else $('#debit-account').value=selected;const data=await fetch('/api/categories?type='+type).then(r=>r.json()),items=[...data.favorites,...data.available],groups=[...new Set(items.map(x=>x.group_name||'其他'))];if(!groups.includes(fastEntryGroup))fastEntryGroup=type==='expense'&&groups.includes('生活飲食')?'生活飲食':groups[0]||'其他';$('#fast-group-select').innerHTML=groups.map(group=>`<option value="${escapeHtml(group)}" ${group===fastEntryGroup?'selected':''}>${escapeHtml(group)}</option>`).join('');$('#fast-major-tabs').innerHTML=groups.map(group=>`<button type="button" data-group="${escapeHtml(group)}" class="${group===fastEntryGroup?'':'secondary'}" style="width:auto;white-space:nowrap;padding:10px 14px;font-size:14px">${escapeHtml(group)}</button>`).join('');$('#fast-major-tabs').querySelectorAll('[data-group]').forEach(button=>button.addEventListener('click',()=>{fastEntryGroup=button.dataset.group;renderFastEntryCategories()}));const selectedCategory=type==='expense'?$('#debit-account').value:$('#credit-account').value,categories=items.filter(x=>(x.group_name||'其他')===fastEntryGroup);if(!categories.some(x=>x.id===selectedCategory)&&categories[0]){if(type==='expense')$('#debit-account').value=categories[0].id;else $('#credit-account').value=categories[0].id}const chosen=type==='expense'?$('#debit-account').value:$('#credit-account').value;$('#fast-category-grid').innerHTML=categories.map(x=>`<button type="button" data-fast-category="${x.id}" style="min-height:74px;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:${x.id===chosen?'#e4f1ec':'#f5f6f4'};color:#17231f;border:${x.id===chosen?'3px solid #2684ff':'1px solid #e1e5e2'}"><span style="font-size:26px;line-height:1">${categoryIcon(x.name,x.icon)}</span><small style="font-size:.82rem;line-height:1.1">${escapeHtml(x.name)}</small></button>`).join('')||'<span class="muted" style="grid-column:1/-1">此大分類尚無小分類</span>';$('#fast-category-grid').querySelectorAll('[data-fast-category]').forEach(button=>button.addEventListener('click',()=>{if(type==='expense')$('#debit-account').value=button.dataset.fastCategory;else $('#credit-account').value=button.dataset.fastCategory;renderFastEntryCategories()}));updateFastAmount()}
 function setupQuickCategories(){const section=document.createElement('section');section.id='quick-categories';section.style.cssText='margin:14px 0;border:1px solid #d9ded9;border-radius:16px;padding:12px;background:#fff';$('#simple-entry').before(section);$('#entry-type').addEventListener('change',()=>{categoryManageMode=false;loadQuickCategories()});$('#debit-account').addEventListener('change',()=>loadQuickCategories());$('#credit-account').addEventListener('change',()=>loadQuickCategories());setTimeout(()=>loadQuickCategories(),300)}
-function setupCategoryManager(){const bar=document.createElement('section');bar.style.cssText='margin:-4px 0 14px';const openButton=document.createElement('button');openButton.type='button';openButton.className='secondary';openButton.textContent='管理分類';bar.append(openButton);document.querySelector('main').insertBefore(bar,$('.view-tabs'));const dialog=document.createElement('dialog');dialog.id='category-manager-dialog';dialog.innerHTML='<div style="padding:20px"><div class="dialog-title"><h2>管理分類</h2><button type="button" class="icon-button" id="category-manager-close">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px"><button type="button" id="manage-expense">支出分類</button><button type="button" id="manage-income" class="secondary">收入分類</button></div><button type="button" id="manager-create" class="secondary" style="margin-bottom:12px">＋ 新增分類</button><div id="manager-list" style="display:grid;gap:8px"></div></div>';document.body.append(dialog);let manageType='expense';async function refresh(){const rows=await fetch('/api/category-management?type='+manageType).then(r=>r.json());$('#manager-list').innerHTML=rows.map(x=>`<article style="display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;border:1px solid #d9ded9;border-radius:12px;padding:10px"><span><strong>${escapeHtml(x.name)}</strong>${x.is_major?'<small style="display:block;color:#6d756f">大分類</small>':''}${x.usage_count?`<small style="display:block;color:#6d756f">${x.usage_count} 筆歷史分錄</small>`:''}</span><button type="button" class="secondary manager-rename" data-id="${x.id}" data-name="${escapeHtml(x.name)}" style="width:auto;padding:9px">改名</button><button type="button" class="manager-delete" data-id="${x.id}" data-name="${escapeHtml(x.name)}" data-usage="${x.usage_count}" style="width:auto;padding:9px;background:#a43d35">刪除</button></article>`).join('')||'<p class="muted">尚無分類</p>';dialog.querySelectorAll('.manager-rename').forEach(button=>button.addEventListener('click',async()=>{const name=prompt('新的分類名稱',button.dataset.name);if(!name||name===button.dataset.name)return;const response=await fetch('/api/categories/'+button.dataset.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});const result=await response.json();if(!response.ok){alert(result.error||'重新命名失敗');return}await syncCategories();refresh()}));dialog.querySelectorAll('.manager-delete').forEach(button=>button.addEventListener('click',async()=>{const usage=Number(button.dataset.usage);const note=usage?`\n此分類已有 ${usage} 筆歷史分錄，刪除後舊帳仍會保留。`:'';if(!confirm(`確定刪除「${button.dataset.name}」？${note}`))return;const response=await fetch('/api/categories/'+button.dataset.id+'?mode=deactivate',{method:'DELETE'});const result=await response.json();if(!response.ok){alert(result.error||'刪除失敗');return}await syncCategories();refresh()}))}async function syncCategories(){accounts=await fetch('/api/accounts').then(r=>r.json());configureEntryForm();loadQuickCategories()}openButton.addEventListener('click',()=>{dialog.showModal();refresh()});$('#category-manager-close').addEventListener('click',()=>dialog.close());$('#manage-expense').addEventListener('click',()=>{manageType='expense';$('#manage-expense').className='';$('#manage-income').className='secondary';refresh()});$('#manage-income').addEventListener('click',()=>{manageType='income';$('#manage-income').className='';$('#manage-expense').className='secondary';refresh()});$('#manager-create').addEventListener('click',async()=>{const name=prompt('新增'+(manageType==='expense'?'支出':'收入')+'分類名稱');if(!name)return;const response=await fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,type:manageType})});const result=await response.json();if(!response.ok){alert(result.error||'新增失敗');return}await syncCategories();refresh()})}
 
 function setupCategoryManagerTree(){
   const bar=document.createElement('section');bar.style.cssText='margin:-4px 0 14px';
@@ -97,6 +97,149 @@ function setupCategoryManagerTree(){
   Object.entries(manageButtons).forEach(([type,button])=>button.addEventListener('click',()=>{manageType=type;Object.entries(manageButtons).forEach(([t,b])=>b.className=t===type?'':'secondary');$('#manager-create').textContent=isBankAccount()?'＋ 新增帳戶':'＋ 新增分類';refresh()}));
   $('#manager-create').addEventListener('click',()=>openEditor());$('#category-editor-close').addEventListener('click',()=>editor.close());$('#category-editor-cancel').addEventListener('click',()=>editor.close());
   $('#category-editor-form').addEventListener('submit',async event=>{event.preventDefault();const endpoint=isBankAccount()?'/api/accounts':'/api/categories',payload=isBankAccount()?{name:$('#category-editor-name').value,type:manageType}:{name:$('#category-editor-name').value,type:manageType,parent_name:$('#category-editor-parent').value||null};const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),result=await response.json();if(!response.ok){$('#category-editor-error').textContent=result.error||'儲存失敗';return}editor.close();await sync();refresh()});
+}
+function setupStockHoldings(){
+  const bar=document.createElement('section');bar.style.cssText='margin:-4px 0 14px';
+  const openButton=document.createElement('button');openButton.type='button';openButton.className='secondary';openButton.textContent='股票持股';bar.append(openButton);document.querySelector('main').insertBefore(bar,$('.view-tabs'));
+  const dialog=document.createElement('dialog');dialog.id='stock-holdings-dialog';dialog.style.width='min(calc(100% - 20px),560px)';
+  dialog.innerHTML='<div style="padding:20px"><div class="dialog-title"><h2 style="flex:1;text-align:center">股票持股</h2><button type="button" class="icon-button" id="stock-holdings-close">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px"><button type="button" id="stock-holding-create" class="secondary">＋ 新增持股</button><button type="button" id="stock-dividend-lookup" class="secondary">🔍 查詢股利</button></div><p id="stock-dividend-lookup-time" class="muted" style="margin:0 0 4px;font-size:12px"></p><p class="muted" style="margin:0 0 12px;font-size:12px">股利資料來源：cmoney.tw（非官方網站，僅供參考，實際金額請以銀行入帳為準）</p><div id="stock-holdings-list" style="display:grid;gap:8px"></div></div>';
+  document.body.append(dialog);
+  const editor=document.createElement('dialog');editor.id='stock-holding-editor-dialog';editor.style.width='min(calc(100% - 24px),400px)';
+  editor.innerHTML='<form id="stock-holding-editor-form" style="padding:20px"><div class="dialog-title"><h2 id="stock-holding-editor-title" style="flex:1;text-align:center">新增持股</h2><button type="button" class="icon-button" id="stock-holding-editor-close">×</button></div><label>股票代號<input id="stock-holding-ticker" maxlength="20" autocomplete="off" required></label><label>股票名稱<input id="stock-holding-name" maxlength="80" autocomplete="off" required></label><label>股數<input id="stock-holding-quantity" type="number" min="1" step="1" inputmode="numeric" required></label><label>證券戶（選填）<input id="stock-holding-broker" maxlength="80" autocomplete="off"></label><p id="stock-holding-editor-error" class="error"></p><div class="form-actions"><button type="button" class="secondary" id="stock-holding-editor-cancel">取消</button><button type="submit">確定</button></div></form>';
+  document.body.append(editor);
+  let editingId=null,currentHoldings=[];
+  // 點卡片本身直接進入修改，不用另外按「修改」按鈕；「刪除」移到卡片右下角，
+  // 按鈕自己的 click 監聽器裡會 stopPropagation，避免點刪除同時誤觸修改。
+  const rowActions=x=>`<div style="display:flex;justify-content:flex-end;margin-top:2px"><button type="button" class="stock-holding-delete" data-id="${x.id}" data-name="${escapeHtml(x.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div>`;
+  // 股利查詢結果直接併進同一張持股卡片裡（代號／股數／證券戶、最新股利／頻率／
+  // 年殖利率、除息日／發放日都在同一個地方），不再是另外分開的一份清單——原本
+  // 手機版是「持股清單」跟「股利查詢結果」兩份各自獨立的清單，跟桌面版原生
+  // 視窗「一張表格一次看完所有欄位」的呈現方式不一致，比對起來很麻煩。不管是
+  // 剛查完，還是打開視窗時從上次存的結果直接帶出來，都用同一個函式畫，畫面看
+  // 起來一致（見 PROJECT_SPEC.md 13.69，跟桌面版「查過的股利資料要存起來，
+  // 不用每次開視窗都重查」是同一個修法）。
+  function renderDividendInfo(info){
+    if(!info)return '<span class="muted" style="font-size:13px">尚未查詢股利</span>';
+    if(info.error)return `<span class="error" style="font-size:13px">${escapeHtml(info.error)}</span>`;
+    const yieldPercent=info.dividend_yield_percent!==null&&info.dividend_yield_percent!==undefined?`${info.dividend_yield_percent}%`:'—';
+    // 股利查回來的原始金額是「每股」，台股實際交易單位是一張（1,000 股），
+    // 換算成「每千股」比較貼近使用者實際持股規模的感覺，不要照原始的每股金額顯示。
+    const perThousand=Math.round(info.latest_amount*1000).toLocaleString();
+    return `<div class="muted" style="font-size:13px">${escapeHtml(info.frequency)}・年殖利率 ${yieldPercent}</div><div style="font-size:13px">最新股利 <b>${perThousand}</b> 元／千股（${escapeHtml(info.latest_period)}）</div><div class="muted" style="font-size:13px">除息日 ${info.ex_dividend_date||'—'}　發放日 ${info.payment_date||'—'}</div>`;
+  }
+  async function saveDividendLookup(holdingId,result){
+    // 存起來給下次打開視窗直接顯示，不用每次都重新查一次；失敗就算了（頂多下次
+    // 又要重查），不影響查詢本身已經在畫面上顯示的結果。
+    try{await fetch('/api/stock-holdings/'+holdingId+'/dividend-lookup',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({result})})}catch(_){}
+  }
+  async function refresh(){
+    const rows=await fetch('/api/stock-holdings').then(r=>r.json());
+    currentHoldings=rows;
+    $('#stock-holdings-list').innerHTML=rows.map(x=>`<article class="stock-holding-row" data-id="${x.id}" data-ticker="${escapeHtml(x.ticker)}" data-name="${escapeHtml(x.name)}" data-quantity="${x.quantity}" data-broker="${escapeHtml(x.broker_account||'')}" style="display:grid;gap:6px;padding:10px;border:1px solid #d9ded9;border-radius:12px;cursor:pointer"><span>📈 <strong>${escapeHtml(x.name)}</strong><small style="display:block;color:#6d756f">${escapeHtml(x.ticker)}・${x.quantity.toLocaleString()} 股${x.broker_account?'・'+escapeHtml(x.broker_account):''}</small></span><div id="dividend-row-${x.id}">${renderDividendInfo(x.dividend_lookup)}</div>${rowActions(x)}</article>`).join('')||'<p class="muted">尚無持股，按上面「＋ 新增持股」建立第一筆</p>';
+    dialog.querySelectorAll('.stock-holding-row').forEach(article=>article.addEventListener('click',()=>{
+      editingId=article.dataset.id;
+      $('#stock-holding-editor-title').textContent='修改持股';
+      $('#stock-holding-ticker').value=article.dataset.ticker;$('#stock-holding-ticker').disabled=true;
+      $('#stock-holding-name').value=article.dataset.name;
+      $('#stock-holding-quantity').value=article.dataset.quantity;
+      $('#stock-holding-broker').value=article.dataset.broker;
+      $('#stock-holding-editor-error').textContent='';
+      editor.showModal();
+    }));
+    dialog.querySelectorAll('.stock-holding-delete').forEach(button=>button.addEventListener('click',async event=>{
+      event.stopPropagation();
+      if(!confirm(`確定刪除「${button.dataset.name}」這筆持股？`))return;
+      const response=await fetch('/api/stock-holdings/'+button.dataset.id,{method:'DELETE'}),result=await response.json();
+      if(!response.ok)return alert(result.error||'刪除失敗');
+      refresh();
+    }));
+  }
+  openButton.addEventListener('click',()=>{dialog.showModal();refresh()});
+  $('#stock-holdings-close').addEventListener('click',()=>dialog.close());
+  $('#stock-holding-create').addEventListener('click',()=>{
+    editingId=null;
+    $('#stock-holding-editor-title').textContent='新增持股';
+    $('#stock-holding-ticker').value='';$('#stock-holding-ticker').disabled=false;
+    $('#stock-holding-name').value='';$('#stock-holding-quantity').value='';$('#stock-holding-broker').value='';
+    $('#stock-holding-editor-error').textContent='';
+    editor.showModal();
+  });
+  // 只用手機、沒有電腦伺服器可以連的使用者（例如朋友純用 GitHub Pages 那份
+  // 離線版本），本機的 /api/stock-dividend-lookup 一定會失敗（沒有伺服器可以
+  // 幫忙繞過 cmoney.tw 的 CORS 限制，見 PROJECT_SPEC.md）。這裡改成先試本機
+  // 路徑，失敗（沒有伺服器、或逾時）再改試 cloudflare/dividend-lookup-worker.js
+  // 部署出來的公開代理服務——把同一套解析邏輯搬到 Cloudflare Worker（伺服器端
+  // 程式，不受瀏覽器 CORS 限制）上執行，已實測跟桌面版查到的資料一致。
+  const DIVIDEND_PROXY_FALLBACK_URL='https://dividend-lookup.kkljman.workers.dev';
+  async function fetchDividendInfoForTicker(ticker){
+    try{
+      // 桌面伺服器查一檔股票最多卡 20 秒左右就會自己回傳逾時錯誤（見
+      // dividend_lookup.py 的 curl --max-time 15／subprocess timeout=20），這裡
+      // 加上 25 秒的用戶端逾時（比伺服器自己的上限多留一點緩衝）：手機訊號不好
+      // 時連線可能整個卡住、既不成功也不失敗，沒有逾時的話 Promise 永遠不會
+      // resolve 也不會 reject，會卡住整個查詢迴圈，後面的持股都不會再查。
+      const response=await fetch('/api/stock-dividend-lookup?ticker='+encodeURIComponent(ticker),{signal:AbortSignal.timeout(25000)});
+      const info=await response.json();
+      if(response.ok&&!info.error)return info;
+    }catch(_){/* 本機沒有伺服器可以查，改試下面的公開代理 */}
+    const response=await fetch(DIVIDEND_PROXY_FALLBACK_URL+'?ticker='+encodeURIComponent(ticker),{signal:AbortSignal.timeout(25000)});
+    const info=await response.json();
+    if(!response.ok||info.error)throw new Error(info.error||'查詢失敗');
+    return info;
+  }
+  $('#stock-dividend-lookup').addEventListener('click',async()=>{
+    if(!currentHoldings.length)return;
+    const button=$('#stock-dividend-lookup');button.disabled=true;
+    for(const holding of currentHoldings){
+      const el=document.getElementById('dividend-row-'+holding.id);
+      if(!el)continue;
+      el.innerHTML='<span class="muted" style="font-size:13px">查詢中…</span>';
+      try{
+        const info=await fetchDividendInfoForTicker(holding.ticker);
+        el.innerHTML=renderDividendInfo(info);
+        saveDividendLookup(holding.id,info);
+      }catch(error){
+        // 原本這裡不管實際拋出什麼例外都直接顯示同一句「查詢失敗」，把真正的
+        // 原因（逾時？連線中斷？)吞掉了，之後要診斷同一個問題只能靠使用者
+        // 截圖裡完全一樣的通用文字，看不出差異。改成把例外的名稱／訊息一起
+        // 顯示出來，至少能分清楚是逾時（AbortError／TimeoutError）還是其他
+        // 網路錯誤。
+        const detail=error?.name==='AbortError'||error?.name==='TimeoutError'?'查詢逾時（25 秒內沒有回應）':(error?.message||String(error));
+        const errorInfo={error:detail.startsWith('查詢失敗')?detail:`查詢失敗：${detail}`};
+        el.innerHTML=renderDividendInfo(errorInfo);
+        saveDividendLookup(holding.id,errorInfo);
+      }
+    }
+    // 比照桌面版，查詢完成後在按鈕旁邊顯示這次查詢的日期時間，讓使用者知道
+    // 目前看到的股利資料是什麼時候查的，不是每次打開視窗都重查（見 13.68 節）。
+    const now=new Date();
+    $('#stock-dividend-lookup-time').textContent=`查詢時間：${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    button.disabled=false;
+  });
+  $('#stock-holding-editor-close').addEventListener('click',()=>editor.close());
+  $('#stock-holding-editor-cancel').addEventListener('click',()=>editor.close());
+  $('#stock-holding-ticker').addEventListener('blur',async()=>{
+    const ticker=$('#stock-holding-ticker').value.trim();
+    if(!ticker||editingId||$('#stock-holding-name').value.trim())return;
+    const result=await fetch('/api/stock-name-lookup?ticker='+encodeURIComponent(ticker)).then(r=>r.json()).catch(()=>({}));
+    if(result.name)$('#stock-holding-name').value=result.name;
+  });
+  $('#stock-holding-name').addEventListener('blur',async()=>{
+    const name=$('#stock-holding-name').value.trim();
+    if(!name||editingId||$('#stock-holding-ticker').value.trim())return;
+    const result=await fetch('/api/stock-ticker-lookup?name='+encodeURIComponent(name)).then(r=>r.json()).catch(()=>({}));
+    if(result.ticker)$('#stock-holding-ticker').value=result.ticker;
+  });
+  $('#stock-holding-editor-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const name=$('#stock-holding-name').value,quantity=Number($('#stock-holding-quantity').value),broker_account=$('#stock-holding-broker').value.trim()||null;
+    const response=editingId
+      ?await fetch('/api/stock-holdings/'+editingId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,quantity,broker_account})})
+      :await fetch('/api/stock-holdings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticker:$('#stock-holding-ticker').value,name,quantity,broker_account})});
+    const result=await response.json();
+    if(!response.ok){$('#stock-holding-editor-error').textContent=result.error||'儲存失敗';return}
+    editor.close();refresh();
+  });
 }
 function setupAnnualReport(){
 const bar=document.createElement('section');bar.style.cssText='margin:-4px 0 14px';const openButton=document.createElement('button');openButton.type='button';openButton.textContent='年度收支統計';bar.append(openButton);document.querySelector('main').insertBefore(bar,$('.view-tabs'));
@@ -172,16 +315,16 @@ $('#annual-income').addEventListener('click',()=>{detailType='income';$('#annual
 }
 async function loadQuickCategories(){const section=$('#quick-categories');if(!section)return;const type=$('#entry-type').value;if(type==='transfer'){section.hidden=true;return}section.hidden=false;const selected=type==='expense'?$('#debit-account').value:$('#credit-account').value;try{const data=await fetch('/api/categories?type='+type).then(r=>r.json());const cards=data.favorites.map(x=>`<button type="button" data-category="${x.id}" style="background:${x.id===selected?'#ffd061':'#f5f6f4'};color:#17231f;padding:10px 4px;min-height:72px"><span style="display:block;font-size:24px">${categoryIcon(x.name,x.icon)}</span><span>${escapeHtml(x.name)}</span>${categoryManageMode?'<b style="color:#a43d35"> ×</b>':''}</button>`).join('');section.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong>常用分類</strong><button id="manage-categories" type="button" class="secondary" style="width:auto;padding:8px 12px">${categoryManageMode?'完成':'管理'}</button></div><div id="category-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">${cards||'<span class="muted">尚未設定常用分類</span>'}</div>${categoryManageMode?`<div style="display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:10px"><select id="available-category"><option value="">選擇既有分類</option>${data.available.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('')}</select><button id="add-existing-category" type="button" style="width:auto">加入</button><button id="create-category" type="button" class="secondary" style="grid-column:1/-1">＋ 新增分類</button></div>`:''}`;$('#manage-categories').addEventListener('click',()=>{categoryManageMode=!categoryManageMode;loadQuickCategories()});section.querySelectorAll('[data-category]').forEach(button=>button.addEventListener('click',async()=>{if(categoryManageMode){if(confirm(`從常用分類移除「${button.innerText.replace('×','').trim()}」？`)){await fetch('/api/categories/'+button.dataset.category,{method:'DELETE'});loadQuickCategories()}return}if(type==='expense')$('#debit-account').value=button.dataset.category;else $('#credit-account').value=button.dataset.category;loadQuickCategories()}));if(categoryManageMode){$('#add-existing-category').addEventListener('click',async()=>{const id=$('#available-category').value;if(!id)return;await fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:id})});loadQuickCategories()});$('#create-category').addEventListener('click',async()=>{const name=prompt('新分類名稱');if(!name)return;const response=await fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,type})});const result=await response.json();if(!response.ok){alert(result.error||'新增失敗');return}accounts=await fetch('/api/accounts').then(r=>r.json());configureEntryForm();if(type==='expense')$('#debit-account').value=result.id;else $('#credit-account').value=result.id;loadQuickCategories()})}}catch(error){section.innerHTML='<span class="error">分類載入失敗</span>'}}
 function currentMonth(){const now=new Date();return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`}
-async function loadSummary(){const m=await fetch('/api/reports/monthly?month='+encodeURIComponent($('#month').value)).then(r=>r.json());const netCls=m.net_minor>=0?'positive':'negative';const hide=$('#privacy-toggle')?.checked;const fmt=n=>hide?'***':money.format(n);$('#summary').innerHTML=[['本月支出',fmt(m.expense_minor),'metric','expense'],['本月收入',fmt(m.income_minor),'metric','income'],['收支差額',fmt(m.net_minor),`metric metric-net ${netCls}`,null]].map(([k,v,c,type])=>`<article class="${c}${type&&transactionTypeFilter===type?' metric-active':''}"${type?` data-metric-type="${type}" style="cursor:pointer"`:''}><strong>${v}</strong><span class="muted">${k}</span></article>`).join('');$('#summary').querySelectorAll('[data-metric-type]').forEach(el=>el.addEventListener('click',()=>{const type=el.dataset.metricType;transactionTypeFilter=transactionTypeFilter===type?null:type;$('#summary').querySelectorAll('[data-metric-type]').forEach(card=>card.classList.toggle('metric-active',card.dataset.metricType===transactionTypeFilter));loadReport();loadTransactions()}))}
+async function loadSummary(){const m=await fetch('/api/reports/monthly?month='+encodeURIComponent($('#month').value)).then(r=>r.json());const netCls=m.net_minor>=0?'positive':'negative';$('#summary').innerHTML=[['本月支出',maskMoney(m.expense_minor),'metric','expense'],['本月收入',maskMoney(m.income_minor),'metric','income'],['收支差額',maskMoney(m.net_minor),`metric metric-net ${netCls}`,null]].map(([k,v,c,type])=>`<article class="${c}${type&&transactionTypeFilter===type?' metric-active':''}"${type?` data-metric-type="${type}" style="cursor:pointer"`:''}><strong>${v}</strong><span class="muted">${k}</span></article>`).join('');$('#summary').querySelectorAll('[data-metric-type]').forEach(el=>el.addEventListener('click',()=>{const type=el.dataset.metricType;transactionTypeFilter=transactionTypeFilter===type?null:type;$('#summary').querySelectorAll('[data-metric-type]').forEach(card=>card.classList.toggle('metric-active',card.dataset.metricType===transactionTypeFilter));loadReport();loadTransactions()}))}
 function polishLedgerLayout(){const summary=$('#summary'),range=$('#range');summary.style.gridTemplateColumns='repeat(auto-fit,minmax(180px,1fr))';range.style.display='none'}
 function setupMonthSwipe(){const area=document.querySelector('main');let sx=0,sy=0,tracking=false;area.addEventListener('touchstart',e=>{if(e.target.closest('.transaction')){tracking=false;return}const t=e.touches[0];sx=t.clientX;sy=t.clientY;tracking=true},{passive:true});area.addEventListener('touchend',e=>{if(!tracking)return;tracking=false;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5)changeMonthAnimated(dx>0?-1:1)},{passive:true})}
 function changeMonthAnimated(delta){const view=document.querySelector('.view:not([hidden])');if(!view){changeMonth(delta);return}const outX=delta>0?-36:36;view.style.transition='transform .3s ease, opacity .3s ease';view.style.transform=`translateX(${outX}px)`;view.style.opacity='0';setTimeout(async()=>{await changeMonth(delta);const nextView=document.querySelector('.view:not([hidden])')||view;nextView.style.transition='none';nextView.style.transform=`translateX(${-outX}px)`;nextView.style.opacity='0';requestAnimationFrame(()=>requestAnimationFrame(()=>{nextView.style.transition='transform .38s ease, opacity .38s ease';nextView.style.transform='translateX(0)';nextView.style.opacity='1'}))},280)}
 function setupScrollTop(){const btn=$('#scroll-top');window.addEventListener('scroll',()=>{btn.hidden=window.scrollY<300},{passive:true});btn.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}))}
-function setupPrivacyToggle(){const cb=$('#privacy-toggle'),KEY='accounting-privacy-mode';cb.checked=localStorage.getItem(KEY)==='1';cb.addEventListener('change',()=>{localStorage.setItem(KEY,cb.checked?'1':'0');loadSummary()})}
-async function loadTransactions(){const p=new URLSearchParams({limit:'200',month:$('#month').value});if($('#search').value.trim())p.set('q',$('#search').value.trim());if(transactionTypeFilter)p.set('type',transactionTypeFilter);const rows=await fetch('/api/transactions?'+p).then(r=>r.json());$('#transactions').innerHTML=rows.map(x=>`<article class="transaction" data-id="${x.id}"><div><div class="date">${x.transaction_date}${x.currency&&x.currency!=='TWD'?`<span class="date-currency">${Number(x.foreign_amount).toLocaleString('zh-TW',{maximumFractionDigits:2})} ${escapeHtml(x.currency)}折合台幣</span>`:''}</div><div class="accounts">${escapeHtml(x.accounts)}</div></div><div class="amount">${money.format(x.debit_total_minor)}</div>${x.memo?`<div class="muted">${escapeHtml(x.memo)}</div>`:'<div></div>'}${x.status!=='normal'?`<span class="badge">${x.status}</span>`:'<span></span>'}</article>`).join('')||`<p class="muted">${transactionTypeFilter?`本月尚無${transactionTypeFilter==='income'?'收入':'支出'}交易`:'本月尚無交易'}</p>`}
-async function loadReport(){const report=await fetch('/api/reports/monthly?month='+encodeURIComponent($('#month').value)).then(r=>r.json());const categories=transactionTypeFilter?report.categories.filter(x=>x.type===transactionTypeFilter):report.categories;const max=Math.max(1,...categories.map(x=>Math.abs(x.amount_minor)));$('#category-report').innerHTML=categories.sort((a,b)=>Math.abs(b.amount_minor)-Math.abs(a.amount_minor)).map(x=>`<article class="category-row ${x.type}" data-account-id="${x.account_id}"><div class="category-head" style="cursor:pointer"><span>${escapeHtml(x.name)}</span><strong>${money.format(x.amount_minor)}</strong></div><div class="bar"><span style="width:${Math.min(100,Math.abs(x.amount_minor)/max*100)}%"></span></div><div class="category-transactions" id="report-cat-${x.account_id}" hidden></div></article>`).join('')||`<p class="muted">本月尚無${transactionTypeFilter?transactionTypeFilter==='income'?'收入':'支出':'分類'}資料</p>`;$('#category-report').querySelectorAll('[data-account-id]').forEach(el=>el.querySelector('.category-head').addEventListener('click',()=>toggleReportCategoryTransactions(el.dataset.accountId)))}
-async function toggleReportCategoryTransactions(accountId){const container=document.getElementById(`report-cat-${accountId}`);if(!container.hidden){container.hidden=true;return}const rows=await fetch('/api/transactions?limit=200&month='+encodeURIComponent($('#month').value)+'&account_id='+encodeURIComponent(accountId)).then(r=>r.json());container.innerHTML=rows.map(t=>`<div class="category-transaction-row" data-id="${t.id}"><span>${escapeHtml(t.transaction_date)}${t.memo?'　'+escapeHtml(t.memo):''}</span><b>${money.format(t.debit_total_minor)}</b></div>`).join('')||'<p class="muted">尚無資料</p>';container.querySelectorAll('[data-id]').forEach(el=>el.addEventListener('click',()=>openDetail(el.dataset.id)));container.hidden=false}
-async function loadBalances(){const [year,month]=$('#month').value.split('-').map(Number);const through=new Date(year,month,0).toLocaleDateString('sv-SE');const rows=await fetch('/api/account-balances?through='+through).then(r=>r.json());$('#balances').innerHTML=rows.filter(x=>['asset','liability'].includes(x.account_type)&&x.active).map(x=>`<article class="balance-card"><span>${escapeHtml(x.name)}</span><strong>${money.format(x.balance_minor)}</strong></article>`).join('')||'<p class="muted">尚無帳戶資料</p>'}
+function setupPrivacyToggle(){const cb=$('#privacy-toggle'),KEY='accounting-privacy-mode';cb.checked=localStorage.getItem(KEY)==='1';cb.addEventListener('change',()=>{localStorage.setItem(KEY,cb.checked?'1':'0');Promise.all([loadSummary(),loadTransactions(),loadReport(),loadBalances()])})}
+async function loadTransactions(){const p=new URLSearchParams({limit:'200',month:$('#month').value});if($('#search').value.trim())p.set('q',$('#search').value.trim());if(transactionTypeFilter)p.set('type',transactionTypeFilter);const rows=await fetch('/api/transactions?'+p).then(r=>r.json());$('#transactions').innerHTML=rows.map(x=>`<article class="transaction" data-id="${x.id}"><div><div class="date">${x.transaction_date}${x.currency&&x.currency!=='TWD'?`<span class="date-currency">${Number(x.foreign_amount).toLocaleString('zh-TW',{maximumFractionDigits:2})} ${escapeHtml(x.currency)}折合台幣</span>`:''}</div><div class="accounts">${escapeHtml(x.accounts)}</div></div><div class="amount">${maskMoney(x.debit_total_minor)}</div>${x.memo?`<div class="muted">${escapeHtml(x.memo)}</div>`:'<div></div>'}${x.status!=='normal'?`<span class="badge">${x.status}</span>`:'<span></span>'}</article>`).join('')||`<p class="muted">${transactionTypeFilter?`本月尚無${transactionTypeFilter==='income'?'收入':'支出'}交易`:'本月尚無交易'}</p>`}
+async function loadReport(){const report=await fetch('/api/reports/monthly?month='+encodeURIComponent($('#month').value)).then(r=>r.json());const categories=transactionTypeFilter?report.categories.filter(x=>x.type===transactionTypeFilter):report.categories;const max=Math.max(1,...categories.map(x=>Math.abs(x.amount_minor)));$('#category-report').innerHTML=categories.sort((a,b)=>Math.abs(b.amount_minor)-Math.abs(a.amount_minor)).map(x=>`<article class="category-row ${x.type}" data-account-id="${x.account_id}"><div class="category-head" style="cursor:pointer"><span>${escapeHtml(x.name)}</span><strong>${maskMoney(x.amount_minor)}</strong></div><div class="bar"><span style="width:${Math.min(100,Math.abs(x.amount_minor)/max*100)}%"></span></div><div class="category-transactions" id="report-cat-${x.account_id}" hidden></div></article>`).join('')||`<p class="muted">本月尚無${transactionTypeFilter?transactionTypeFilter==='income'?'收入':'支出':'分類'}資料</p>`;$('#category-report').querySelectorAll('[data-account-id]').forEach(el=>el.querySelector('.category-head').addEventListener('click',()=>toggleReportCategoryTransactions(el.dataset.accountId)))}
+async function toggleReportCategoryTransactions(accountId){const container=document.getElementById(`report-cat-${accountId}`);if(!container.hidden){container.hidden=true;return}const rows=await fetch('/api/transactions?limit=200&month='+encodeURIComponent($('#month').value)+'&account_id='+encodeURIComponent(accountId)).then(r=>r.json());container.innerHTML=rows.map(t=>`<div class="category-transaction-row" data-id="${t.id}"><span>${escapeHtml(t.transaction_date)}${t.memo?'　'+escapeHtml(t.memo):''}</span><b>${maskMoney(t.debit_total_minor)}</b></div>`).join('')||'<p class="muted">尚無資料</p>';container.querySelectorAll('[data-id]').forEach(el=>el.addEventListener('click',()=>openDetail(el.dataset.id)));container.hidden=false}
+async function loadBalances(){const [year,month]=$('#month').value.split('-').map(Number);const through=new Date(year,month,0).toLocaleDateString('sv-SE');const rows=await fetch('/api/account-balances?through='+through).then(r=>r.json());$('#balances').innerHTML=rows.filter(x=>['asset','liability'].includes(x.account_type)&&x.active).map(x=>`<article class="balance-card"><span>${escapeHtml(x.name)}</span><strong>${maskMoney(x.balance_minor)}</strong></article>`).join('')||'<p class="muted">尚無帳戶資料</p>'}
 function changeMonth(delta){const [y,m]=$('#month').value.split('-').map(Number);const d=new Date(y,m-1+delta,1);$('#month').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;return Promise.all([loadSummary(),loadTransactions(),loadReport(),loadBalances()])}
 function stepDateField(selector,delta){const input=$(selector);if(!input.value)return;const [y,m,d]=input.value.split('-').map(Number);const next=new Date(y,m-1,d+delta);input.value=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`}
 function accountOptions(types){return accounts.filter(a=>a.active&&types.includes(a.account_type)).map((account,index)=>({account,index})).sort((left,right)=>{const rank=name=>name==='現金'?-1:name==='房屋貸款'||name==='房屋貨款'?1:0;return rank(left.account.name)-rank(right.account.name)||left.index-right.index}).map(({account})=>`<option value="${account.id}">${escapeHtml(account.name)}</option>`).join('')}
@@ -195,14 +338,32 @@ async function openDetail(id){const detail=await fetch('/api/transactions/'+id).
 async function saveDetail(event){event.preventDefault();$('#detail-error').textContent='';const foreignAmount=Number($('#detail-amount').value),rate=Number($('#detail-rate').value),currency=$('#detail-currency').value,amount=Math.round(foreignAmount*rate);if(!(foreignAmount>0)||!(rate>0)||!detailCounterpartId){$('#detail-error').textContent='請檢查金額、匯率與分類';return}const categoryId=$('#detail-category').value,entries=detailCategorySide==='debit'?[{account_id:categoryId,debit_minor:amount},{account_id:detailCounterpartId,credit_minor:amount}]:[{account_id:detailCounterpartId,debit_minor:amount},{account_id:categoryId,credit_minor:amount}],exchange=currency==='TWD'?null:{currency,foreign_amount:String(foreignAmount),twd_rate:String(rate),rate_kind:detailRateSource?.rate_kind||'manual',source_name:detailRateSource?.source_name||'手動輸入',source_url:detailRateSource?.source_url||'',quoted_at:detailRateSource?.quoted_at||null};const response=await fetch('/api/transactions/'+$('#detail-id').value,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({transaction_date:$('#detail-date').value,memo:$('#detail-memo').value,entries,exchange})});const result=await response.json();if(!response.ok){$('#detail-error').textContent=result.error||'儲存失敗';return}$('#detail-dialog').close();await Promise.all([loadSummary(),loadTransactions(),loadReport(),loadBalances()]);showToast('修改已儲存')}
 async function voidDetail(){if(!confirm('確定要作廢這筆交易？作廢後不會列入帳目，但仍保留稽核紀錄。'))return;$('#detail-error').textContent='';const response=await fetch('/api/transactions/'+$('#detail-id').value,{method:'DELETE'});const result=await response.json();if(!response.ok){$('#detail-error').textContent=result.error||'作廢失敗';return}$('#detail-dialog').close();await Promise.all([loadSummary(),loadTransactions(),loadReport(),loadBalances()]);showToast('交易已作廢')}
 function selectView(name){document.querySelectorAll('.view').forEach(view=>view.hidden=view.id!==name+'-view');document.querySelectorAll('.view-tabs button').forEach(button=>button.classList.toggle('active',button.dataset.view===name));if(name==='report')loadReport();if(name==='balances')loadBalances()}
-async function initialize(){$('#month').value=currentMonth();$('#entry-date').value=new Date().toLocaleDateString('sv-SE');accounts=await fetch('/api/accounts').then(r=>r.json());configureEntryForm();await renderFastEntryCategories();await Promise.all([loadSummary(),loadTransactions()]);$('#previous').addEventListener('click',()=>changeMonthAnimated(-1));$('#next').addEventListener('click',()=>changeMonthAnimated(1));$('#entry-date-prev').addEventListener('click',()=>stepDateField('#entry-date',-1));$('#entry-date-next').addEventListener('click',()=>stepDateField('#entry-date',1));$('#detail-date-prev').addEventListener('click',()=>stepDateField('#detail-date',-1));$('#detail-date-next').addEventListener('click',()=>stepDateField('#detail-date',1));$('#entry-date').addEventListener('change',()=>{if(!$('#entry-date').value)$('#entry-date').value=new Date().toLocaleDateString('sv-SE')});$('#detail-date').addEventListener('change',()=>{if(!$('#detail-date').value)$('#detail-date').value=new Date().toLocaleDateString('sv-SE')});$('#month').addEventListener('change',()=>{if(!$('#month').value)$('#month').value=currentMonth();Promise.all([loadSummary(),loadTransactions(),loadReport(),loadBalances()])});let timer;$('#search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(loadTransactions,250)});$('#add').addEventListener('click',()=>$('#entry-dialog').showModal());$('#close').addEventListener('click',()=>$('#entry-dialog').close());$('#entry-type').addEventListener('change',configureEntryForm);$('#entry-form').addEventListener('submit',submitEntry);$('#save-and-new').addEventListener('click',()=>{saveAndContinue=true;$('#entry-form').requestSubmit()});$('#toggle-split').addEventListener('click',toggleSplit);$('#add-create-entry').addEventListener('click',()=>$('#create-entries').append(entryRow()));$('#transactions').addEventListener('click',event=>{const card=event.target.closest('.transaction');if(card)openDetail(card.dataset.id)});$('#detail-close').addEventListener('click',()=>$('#detail-dialog').close());$('#add-entry').addEventListener('click',()=>$('#detail-entries').append(entryRow()));$('#detail-title-delete').addEventListener('click',voidDetail);$('#detail-form').addEventListener('submit',saveDetail);document.querySelectorAll('.view-tabs button').forEach(button=>button.addEventListener('click',()=>selectView(button.dataset.view)));if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').then(registration=>{registration.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')registration.update()})})}
-function setupGroupedBalances(){const rowCard=row=>`<article class="balance-card"><span>${escapeHtml(row.name)}</span><strong>${money.format(row.balance_minor)}</strong></article>`;const groupedCard=(title,rows,kind)=>`<details class="balance-group ${kind}"><summary><span><strong>${escapeHtml(title)}</strong><small>${rows.length} 個帳戶・點擊查看</small></span><b>${money.format(rows.reduce((sum,row)=>sum+row.balance_minor,0))}</b></summary><div class="balance-group-items">${rows.map(rowCard).join('')}</div></details>`;loadBalances=async function(){const [year,month]=$('#month').value.split('-').map(Number),through=new Date(year,month,0).toLocaleDateString('sv-SE'),rows=(await fetch('/api/account-balances?through='+through).then(response=>response.json())).filter(row=>['asset','liability'].includes(row.account_type)&&row.active);const mortgage=rows.filter(row=>row.name==='房屋貸款'),bank=rows.filter(row=>row.name!=='房屋貸款'&&(row.parent_name==='銀行存款'||row.name==='銀行存款'||/(銀行|郵局).*(存款|帳戶)|^(土地銀行|台新銀行|玉山銀行|聯邦銀行)$/.test(row.name))),cards=rows.filter(row=>row.parent_name==='信用卡'||/信用卡/.test(row.name)),used=new Set([...bank,...cards,...mortgage].map(row=>row.id)),cash=rows.filter(row=>row.name==='現金'),others=rows.filter(row=>!used.has(row.id)&&row.name!=='現金');const content=[...cash.map(rowCard),bank.length>1?groupedCard('銀行存款',bank,'bank'):bank.map(rowCard).join(''),...others.map(rowCard),cards.length>1?groupedCard('信用卡',cards,'credit'):cards.map(rowCard).join(''),...mortgage.map(rowCard)].join('');$('#balances').innerHTML=content||'<p class="muted">尚無帳戶資料</p>'}}
+async function initialize(){$('#month').value=currentMonth();$('#entry-date').value=new Date().toLocaleDateString('sv-SE');accounts=await fetch('/api/accounts').then(r=>r.json());configureEntryForm();await renderFastEntryCategories();await Promise.all([loadSummary(),loadTransactions()]);$('#previous').addEventListener('click',()=>changeMonthAnimated(-1));$('#next').addEventListener('click',()=>changeMonthAnimated(1));$('#entry-date-prev').addEventListener('click',()=>stepDateField('#entry-date',-1));$('#entry-date-next').addEventListener('click',()=>stepDateField('#entry-date',1));$('#detail-date-prev').addEventListener('click',()=>stepDateField('#detail-date',-1));$('#detail-date-next').addEventListener('click',()=>stepDateField('#detail-date',1));$('#entry-date').addEventListener('change',()=>{if(!$('#entry-date').value)$('#entry-date').value=new Date().toLocaleDateString('sv-SE')});$('#detail-date').addEventListener('change',()=>{if(!$('#detail-date').value)$('#detail-date').value=new Date().toLocaleDateString('sv-SE')});$('#month').addEventListener('change',()=>{if(!$('#month').value)$('#month').value=currentMonth();Promise.all([loadSummary(),loadTransactions(),loadReport(),loadBalances()])});let timer;$('#search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(loadTransactions,250)});$('#add').addEventListener('click',()=>$('#entry-dialog').showModal());$('#close').addEventListener('click',()=>$('#entry-dialog').close());$('#entry-type').addEventListener('change',configureEntryForm);$('#entry-form').addEventListener('submit',submitEntry);$('#save-and-new').addEventListener('click',()=>{saveAndContinue=true;$('#entry-form').requestSubmit()});$('#toggle-split').addEventListener('click',toggleSplit);$('#add-create-entry').addEventListener('click',()=>$('#create-entries').append(entryRow()));$('#transactions').addEventListener('click',event=>{const card=event.target.closest('.transaction');if(card)openDetail(card.dataset.id)});$('#detail-close').addEventListener('click',()=>$('#detail-dialog').close());$('#add-entry').addEventListener('click',()=>$('#detail-entries').append(entryRow()));$('#detail-title-delete').addEventListener('click',voidDetail);$('#detail-form').addEventListener('submit',saveDetail);document.querySelectorAll('.view-tabs button').forEach(button=>button.addEventListener('click',()=>selectView(button.dataset.view)));if('serviceWorker'in navigator){
+  // 光是 registration.update() 抓到新版 sw.js、新版裝好並啟用（skipWaiting／
+  // clients.claim），並不代表「這一次」的頁面請求已經是新版在服務——啟用的
+  // 時間點通常晚於這次導覽本身，所以同一次重新整理常常還是看到舊內容，一定
+  // 要「再重新整理一次」新版才會真正生效。這是手機那邊「明明已經整個關掉分頁
+  // 重開，畫面還是舊的」反覆卡住的根本原因（不是 iOS 快取或 standalone 模式
+  // 的問題，純粹是網頁本身沒有在偵測到新版本控制權切換時自動再刷新一次）。
+  // 監聽 controllerchange（新版 Service Worker 真正接手時會觸發一次）並自動
+  // 重新整理一次，之後使用者不用自己意識到要「重整兩次」。用 refreshing 這個
+  // 旗標避免萬一觸發多次時被反覆重整。
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('/sw.js').then(registration=>{registration.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')registration.update()})})
+}}
+function setupGroupedBalances(){const rowCard=row=>`<article class="balance-card"><span>${escapeHtml(row.name)}</span><strong>${maskMoney(row.balance_minor)}</strong></article>`;const groupedCard=(title,rows,kind)=>`<details class="balance-group ${kind}"><summary><span><strong>${escapeHtml(title)}</strong><small>${rows.length} 個帳戶・點擊查看</small></span><b>${maskMoney(rows.reduce((sum,row)=>sum+row.balance_minor,0))}</b></summary><div class="balance-group-items">${rows.map(rowCard).join('')}</div></details>`;loadBalances=async function(){const [year,month]=$('#month').value.split('-').map(Number),through=new Date(year,month,0).toLocaleDateString('sv-SE'),rows=(await fetch('/api/account-balances?through='+through).then(response=>response.json())).filter(row=>['asset','liability'].includes(row.account_type)&&row.active);const mortgage=rows.filter(row=>row.name==='房屋貸款'),bank=rows.filter(row=>row.name!=='房屋貸款'&&(row.parent_name==='銀行存款'||row.name==='銀行存款'||/(銀行|郵局).*(存款|帳戶)|^(土地銀行|台新銀行|玉山銀行|聯邦銀行)$/.test(row.name))),cards=rows.filter(row=>row.parent_name==='信用卡'||/信用卡/.test(row.name)),used=new Set([...bank,...cards,...mortgage].map(row=>row.id)),cash=rows.filter(row=>row.name==='現金'),others=rows.filter(row=>!used.has(row.id)&&row.name!=='現金');const content=[...cash.map(rowCard),bank.length>1?groupedCard('銀行存款',bank,'bank'):bank.map(rowCard).join(''),...others.map(rowCard),cards.length>1?groupedCard('信用卡',cards,'credit'):cards.map(rowCard).join(''),...mortgage.map(rowCard)].join('');$('#balances').innerHTML=content||'<p class="muted">尚無帳戶資料</p>'}}
 function upgradeCloudScheduleSettings(){const form=$('#cloud-settings-form'),enabled=$('#cloud-backup-enabled'),time=$('#cloud-backup-time'),timeLabel=time.closest('label');enabled.parentElement.lastChild.textContent=' 啟用 Google Drive 自動加密備份';const schedule=document.createElement('section');schedule.id='cloud-schedule-options';schedule.innerHTML='<h4 style="margin:14px 0 8px">自動備份時間</h4><div style="display:grid;gap:10px"><label class="schedule-choice" style="grid-template-columns:auto 1fr;align-items:center;margin:0"><input type="radio" name="cloud-schedule-mode" value="interval" checked style="width:22px;height:22px"> 每隔一段時間</label><label id="cloud-interval-label">備份間隔<select id="cloud-backup-interval"><option value="1">每 1 小時</option><option value="2">每 2 小時</option><option value="3">每 3 小時</option><option value="4">每 4 小時</option><option value="6" selected>每 6 小時（建議）</option><option value="8">每 8 小時</option><option value="12">每 12 小時</option><option value="24">每 24 小時</option></select></label><label class="schedule-choice" style="grid-template-columns:auto 1fr;align-items:center;margin:0"><input type="radio" name="cloud-schedule-mode" value="daily" style="width:22px;height:22px"> 每日固定時間</label></div><p id="cloud-next-backup" class="muted" style="margin:10px 0 0"></p>';timeLabel.before(schedule);schedule.append(timeLabel);timeLabel.firstChild.textContent='每日備份時間';const mode=()=>form.querySelector('input[name="cloud-schedule-mode"]:checked').value;const refresh=()=>{const daily=mode()==='daily';timeLabel.hidden=!daily;$('#cloud-interval-label').hidden=daily;$('#cloud-next-backup').textContent=daily?`排程：每天 ${time.value||'03:00'} 備份`:`排程：每 ${$('#cloud-backup-interval').value} 小時備份一次`};schedule.addEventListener('change',refresh);time.addEventListener('input',refresh);form.addEventListener('submit',async event=>{event.preventDefault();event.stopImmediatePropagation();const response=await fetch('/api/cloud-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:enabled.checked,schedule_mode:mode(),interval_hours:Number($('#cloud-backup-interval').value),backup_time:time.value||'03:00'})}),result=await response.json();$('#cloud-settings-message').textContent=response.ok?'排程設定已儲存；完成 Google Drive 授權後會自動執行。':result.error||'儲存失敗';refresh()},true);refresh()}
 function hideAnnualMenuExtras(){const rule=$('#main-menu-dialog .menu-profile-rule');if(rule)rule.style.display='none'}
 function reorganizeMenuAndAppearance(){const exportMenu=$('#menu-export'),importMenu=$('#menu-import'),backupMenu=$('#menu-backup'),backupDialog=$('#cloud-settings-dialog');exportMenu.innerHTML='<span>↕</span>匯出／匯入';importMenu.style.display='none';backupMenu.innerHTML='<span>☁</span>帳務同步';backupDialog.querySelector('.dialog-title h2').textContent='帳務同步';$('#menu-recurring').after(backupMenu);backupMenu.after(exportMenu);const cloudForm=$('#cloud-settings-form'),transfer=document.createElement('dialog');transfer.id='transfer-dialog';transfer.innerHTML='<div class="utility-book"><div class="dialog-title"><div><p class="eyebrow dark">DATA TRANSFER</p><h2>匯出／匯入</h2></div><button type="button" class="icon-button" id="transfer-close">×</button></div><p class="notice">格式與原始 E-Money test.csv 相容；匯入前會檢查重複資料並保留歷史紀錄。</p><div class="utility-actions"><button type="button" id="transfer-export">匯出 CSV</button><button type="button" class="secondary" id="transfer-import">匯入 CSV</button></div><input id="transfer-file" type="file" accept=".csv,text/csv" hidden><p id="transfer-message" class="muted"></p></div>';document.body.append(transfer);const openBackup=async()=>{try{const values=await fetch('/api/cloud-settings').then(response=>response.json());$('#cloud-backup-enabled').checked=values.enabled;$('#cloud-backup-time').value=values.backup_time||'03:00';const radio=cloudForm.querySelector(`input[name="cloud-schedule-mode"][value="${values.schedule_mode||'interval'}"]`);if(radio)radio.checked=true;$('#cloud-backup-interval').value=String(values.interval_hours||6);cloudForm.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){$('#cloud-settings-message').textContent='備份設定載入失敗'}$('#main-menu-dialog').close();backupDialog.showModal()};exportMenu.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();$('#main-menu-dialog').close();transfer.showModal()},true);backupMenu.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();openBackup()},true);$('#transfer-close').addEventListener('click',()=>transfer.close());$('#transfer-export').addEventListener('click',()=>location.href='/api/export');$('#transfer-import').addEventListener('click',()=>$('#transfer-file').click());$('#transfer-file').addEventListener('change',async()=>{const file=$('#transfer-file').files[0];if(!file)return;if(!confirm(`確定匯入 ${file.name}？`))return;$('#transfer-message').textContent='匯入中…';const response=await fetch('/api/import',{method:'POST',headers:{'Content-Type':'text/csv','X-Filename':'import.csv'},body:file}),result=await response.json();if(!response.ok){$('#transfer-message').textContent=result.error||'匯入失敗';return}alert(`匯入完成：新增 ${result.imported_transactions} 筆，略過 ${result.skipped_transactions} 筆。`);location.reload()})}
 setupDataTransfer();
 setupAnnualReport();
 setupCategoryManagerTree();
+setupStockHoldings();
 setupMainMenu();
 hideAnnualMenuExtras();
 
@@ -228,48 +389,123 @@ function setupRecurringTransactions(){
   dialog.innerHTML='<div style="padding:20px"><div class="dialog-title"><div><p class="eyebrow dark">RECURRING</p><h2>固定收/支出</h2></div><button type="button" class="icon-button" id="recurring-close">×</button></div><p class="notice">設定好之後，到了指定的日期就會自動記一筆帳，不用手動輸入。</p><button type="button" id="recurring-create" class="secondary" style="margin-bottom:12px">＋ 新增固定收支</button><div id="recurring-list"></div></div>';
   document.body.append(dialog);
   const editor=document.createElement('dialog');editor.id='recurring-editor-dialog';editor.style.width='min(calc(100% - 24px),460px)';
-  editor.innerHTML='<form id="recurring-editor-form" style="padding:20px"><div class="dialog-title"><h2 id="recurring-editor-title">新增固定收支</h2><button type="button" class="icon-button" id="recurring-editor-close">×</button></div><label>名稱<input id="recurring-editor-name" maxlength="80" autocomplete="off" required></label><label>類型<select id="recurring-editor-type"><option value="expense">支出</option><option value="income">收入</option></select></label><label>分類<select id="recurring-editor-category"></select></label><label>帳戶<select id="recurring-editor-account"></select></label><label>金額<input id="recurring-editor-amount" type="number" min="1" step="1" inputmode="numeric" required></label><label>週期<select id="recurring-editor-frequency"><option value="monthly">每月</option><option value="yearly">每年</option></select></label><label id="recurring-editor-month-label">月份<select id="recurring-editor-month"></select></label><label>日期<select id="recurring-editor-day"></select></label><label>開始日期<input id="recurring-editor-start" type="date" required></label><label>結束日期（選填，之後可再修改）<input id="recurring-editor-end" type="date"></label><p id="recurring-editor-error" class="error"></p><div class="form-actions"><button type="button" class="secondary" id="recurring-editor-cancel">取消</button><button type="submit">確定</button></div></form>';
+  editor.innerHTML='<form id="recurring-editor-form" style="padding:20px"><div class="dialog-title"><h2 id="recurring-editor-title">新增固定收支</h2><button type="button" class="icon-button" id="recurring-editor-close">×</button></div>'
+    +'<label>名稱<input id="recurring-editor-name" maxlength="80" autocomplete="off" required></label>'
+    +'<label>類型<select id="recurring-editor-type"><option value="expense">支出</option><option value="income">收入</option></select></label>'
+    +'<label>大分類<div id="recurring-editor-major-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:5px"></div></label>'
+    +'<label>小分類<div id="recurring-editor-category-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div></label>'
+    +'<label>帳戶<select id="recurring-editor-account"></select></label>'
+    +'<label>金額<input id="recurring-editor-amount" type="number" min="1" step="1" inputmode="numeric" required></label>'
+    +'<label>頻率<div id="recurring-editor-frequency-buttons" style="display:flex;gap:8px;margin-top:2px">'
+      +'<button type="button" class="secondary" data-frequency="yearly" style="width:auto;padding:9px 16px">每年</button>'
+      +'<button type="button" class="secondary" data-frequency="monthly" style="width:auto;padding:9px 16px">每月</button>'
+      +'<button type="button" class="secondary" data-frequency="irregular" style="width:auto;padding:9px 16px">股利</button>'
+    +'</div></label>'
+    +'<label id="recurring-editor-month-label">月份<select id="recurring-editor-month"></select></label>'
+    +'<label id="recurring-editor-day-label">日期<select id="recurring-editor-day"></select></label>'
+    +'<label id="recurring-editor-start-label">開始日期<input id="recurring-editor-start" type="date"></label>'
+    +'<div id="recurring-editor-end-label" style="display:grid;gap:7px;margin:17px 0">'
+      +'<span style="font-weight:650;font-size:14px">結束</span>'
+      +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+        +'<span style="display:flex;align-items:center;gap:4px"><input type="radio" name="recurring-editor-end-mode" id="recurring-editor-end-continuous" checked><label for="recurring-editor-end-continuous">持續</label></span>'
+        +'<span style="display:flex;align-items:center;gap:4px"><input type="radio" name="recurring-editor-end-mode" id="recurring-editor-end-specific"><label for="recurring-editor-end-specific">到</label></span>'
+        +'<input id="recurring-editor-end" type="date" disabled style="flex:1;min-width:140px">'
+      +'</div>'
+    +'</div>'
+    +'<label id="recurring-editor-irregular-label">日期（股利這種每次金額、日期都不太一樣的收入，發放日期確定後用這個）<input id="recurring-editor-irregular-date" type="date"></label>'
+    +'<p id="recurring-editor-error" class="error"></p>'
+    +'<div class="form-actions"><button type="button" class="secondary" id="recurring-editor-cancel">取消</button><button type="submit">確定</button></div></form>';
   document.body.append(editor);
   $('#recurring-editor-day').innerHTML=Array.from({length:31},(_,i)=>i+1).map(day=>`<option value="${day}">${day} 日</option>`).join('');
   $('#recurring-editor-month').innerHTML=Array.from({length:12},(_,i)=>i+1).map(month=>`<option value="${month}">${month} 月</option>`).join('');
-  let editingId=null;
-  const frequencyLabel=row=>row.frequency==='monthly'?`每月 ${row.day_of_month} 日`:`每年 ${row.month_of_year} 月 ${row.day_of_month} 日`;
-  function refreshCategoryOptions(){
+  let editingId=null,recurringEditorMajor=null,recurringEditorCategoryId=null,recurringEditorFrequency='monthly';
+  // 「不固定」在資料庫層完全不是新的一種週期——底層還是存 frequency='yearly'，
+  // 只是 start_date 跟 end_date 存成同一天，讓它剛好只觸發一次、之後不會每年
+  // 重複，跟桌面版（PROJECT_SPEC.md 13.64／13.69）同一套做法，資料完全共用。
+  const isIrregular=row=>Boolean(row.start_date&&row.end_date&&row.start_date===row.end_date);
+  const frequencyLabel=row=>isIrregular(row)?'股利':(row.frequency==='monthly'?`每月 ${row.day_of_month} 日`:`每年 ${row.month_of_year} 月 ${row.day_of_month} 日`);
+  // 分類選擇改成「大分類分頁＋小分類圖示方塊」，跟桌面版原生視窗的兩層選擇方式
+  // 一致（也跟「新增交易」快速輸入畫面用的是同一套 group_name 分組資料），
+  // 不再是單一個看不出圖示、把「大分類／小分類」硬塞成一行文字的下拉選單。
+  async function refreshRecurringCategories(preserveSelection){
     const type=$('#recurring-editor-type').value;
-    const rows=accounts.filter(row=>row.active&&row.account_type===type);
-    $('#recurring-editor-category').innerHTML=rows.map(row=>`<option value="${row.id}">${escapeHtml(row.parent_name?row.parent_name+'／':'')}${escapeHtml(row.name)}</option>`).join('');
+    const data=await fetch('/api/categories?type='+type).then(r=>r.json());
+    const items=[...data.favorites,...data.available];
+    const groups=[...new Set(items.map(x=>x.group_name||'其他'))];
+    if(!preserveSelection||!groups.includes(recurringEditorMajor))recurringEditorMajor=groups[0]||null;
+    $('#recurring-editor-major-tabs').innerHTML=groups.map(group=>`<button type="button" data-group="${escapeHtml(group)}" class="${group===recurringEditorMajor?'':'secondary'}" style="width:auto;white-space:nowrap;padding:9px 14px;font-size:14px">${escapeHtml(group)}</button>`).join('');
+    $('#recurring-editor-major-tabs').querySelectorAll('[data-group]').forEach(tabButton=>tabButton.addEventListener('click',()=>{recurringEditorMajor=tabButton.dataset.group;recurringEditorCategoryId=null;refreshRecurringCategories(true)}));
+    const matching=items.filter(x=>(x.group_name||'其他')===recurringEditorMajor);
+    if(!preserveSelection||!matching.some(x=>x.id===recurringEditorCategoryId))recurringEditorCategoryId=matching[0]?.id||null;
+    $('#recurring-editor-category-grid').innerHTML=matching.map(x=>`<button type="button" data-category="${x.id}" style="min-height:70px;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:${x.id===recurringEditorCategoryId?'#e4f1ec':'#f5f6f4'};color:#17231f;border:${x.id===recurringEditorCategoryId?'3px solid #2684ff':'1px solid #e1e5e2'}"><span style="font-size:24px;line-height:1">${categoryIcon(x.name,x.icon)}</span><small style="font-size:.78rem;line-height:1.1">${escapeHtml(x.name)}</small></button>`).join('')||'<span class="muted" style="grid-column:1/-1">此大分類尚無小分類</span>';
+    $('#recurring-editor-category-grid').querySelectorAll('[data-category]').forEach(tileButton=>tileButton.addEventListener('click',()=>{recurringEditorCategoryId=tileButton.dataset.category;refreshRecurringCategories(true)}));
   }
   function refreshAccountOptions(){
     const rows=accounts.filter(row=>row.active&&['asset','liability'].includes(row.account_type));
     $('#recurring-editor-account').innerHTML=rows.map(row=>`<option value="${row.id}">${escapeHtml(row.name)}</option>`).join('');
+    const cash=rows.find(row=>row.name==='現金');
+    if(cash)$('#recurring-editor-account').value=cash.id;
+  }
+  // 頻率改成「每年／每月／不固定」三顆互斥按鈕，不是下拉選單，跟桌面版原生
+  // 視窗的頻率選擇方式一致；選中的值存在 recurringEditorFrequency 這個變數裡
+  // （不再有對應的 <select>），按鈕的作用只是切換樣式＋呼叫這個函式。
+  function setFrequencyButtons(value){
+    recurringEditorFrequency=value;
+    $('#recurring-editor-frequency-buttons').querySelectorAll('[data-frequency]').forEach(freqButton=>{
+      freqButton.className=freqButton.dataset.frequency===value?'':'secondary';
+    });
+    refreshFrequencyFields();
   }
   function refreshFrequencyFields(){
-    $('#recurring-editor-month-label').hidden=$('#recurring-editor-frequency').value!=='yearly';
+    const frequency=recurringEditorFrequency,isRecurring=frequency!=='irregular';
+    $('#recurring-editor-month-label').hidden=frequency!=='yearly';
+    $('#recurring-editor-day-label').hidden=!isRecurring;
+    $('#recurring-editor-start-label').hidden=!isRecurring;
+    $('#recurring-editor-end-label').hidden=!isRecurring;
+    $('#recurring-editor-irregular-label').hidden=isRecurring;
+    $('#recurring-editor-day').required=isRecurring;
+    $('#recurring-editor-start').required=isRecurring;
+    $('#recurring-editor-irregular-date').required=!isRecurring;
   }
-  function openEditor(item=null){
+  async function openEditor(item=null){
     editingId=item?.id||null;
     $('#recurring-editor-title').textContent=item?'修改固定收支':'新增固定收支';
     $('#recurring-editor-name').value=item?.name||'';
     $('#recurring-editor-type').value=item?.account_type||'expense';
-    refreshCategoryOptions();
     refreshAccountOptions();
-    if(item)$('#recurring-editor-category').value=item.category_account_id;
     if(item)$('#recurring-editor-account').value=item.counterpart_account_id;
     $('#recurring-editor-amount').value=item?String(item.amount_minor):'';
-    $('#recurring-editor-frequency').value=item?.frequency||'monthly';
-    refreshFrequencyFields();
+    recurringEditorCategoryId=item?.category_account_id||null;
+    recurringEditorMajor=null;
+    if(item){
+      // 修改既有規則時，要先查出這筆分類屬於哪個大分類，分頁才能一開始就
+      // 停在正確的大分類上，而不是每次都跳回第一個。
+      const data=await fetch('/api/categories?type='+item.account_type).then(r=>r.json());
+      const match=[...data.favorites,...data.available].find(x=>x.id===item.category_account_id);
+      recurringEditorMajor=match?(match.group_name||'其他'):null;
+    }
+    await refreshRecurringCategories(true);
+    setFrequencyButtons(item&&isIrregular(item)?'irregular':(item?.frequency||'monthly'));
     $('#recurring-editor-day').value=String(item?.day_of_month||1);
     $('#recurring-editor-month').value=String(item?.month_of_year||1);
     $('#recurring-editor-start').value=item?.start_date||new Date().toLocaleDateString('sv-SE');
+    const hasEndDate=Boolean(item?.end_date);
+    $('#recurring-editor-end-continuous').checked=!hasEndDate;
+    $('#recurring-editor-end-specific').checked=hasEndDate;
+    $('#recurring-editor-end').disabled=!hasEndDate;
     $('#recurring-editor-end').value=item?.end_date||'';
+    $('#recurring-editor-irregular-date').value=item&&isIrregular(item)?item.start_date:'';
     $('#recurring-editor-error').textContent='';
     editor.showModal();
   }
   async function refresh(){
     const rows=await fetch('/api/recurring').then(response=>response.json());
-    $('#recurring-list').innerHTML=rows.map(row=>`<article class="category-row ${row.account_type}"><div class="category-head"><span>${escapeHtml(row.name)}</span><strong>${money.format(row.amount_minor)}</strong></div><div class="muted">${row.account_type==='expense'?'支出':'收入'}・${escapeHtml(frequencyLabel(row))}・帳戶：${escapeHtml(row.counterpart_name)}${row.next_date?`・下次：${escapeHtml(row.next_date)}`:''}</div><div style="display:flex;gap:7px;margin-top:8px"><button type="button" class="secondary" data-recurring-edit="${row.id}" style="width:auto;padding:7px 14px">修改</button><button type="button" data-recurring-delete="${row.id}" data-name="${escapeHtml(row.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div></article>`).join('')||'<p class="muted">尚未設定固定收支</p>';
+    // 點項目本身直接進入修改，不用另外按「修改」按鈕；「刪除」移到卡片右下角，
+    // 用 stopPropagation 擋掉冒泡，避免點刪除同時誤觸整張卡片的修改動作。
+    $('#recurring-list').innerHTML=rows.map(row=>`<article class="category-row ${row.account_type}" data-recurring-edit="${row.id}" style="cursor:pointer"><div class="category-head"><span>${escapeHtml(row.name)}</span><strong>${money.format(row.amount_minor)}</strong></div><div class="muted">${row.account_type==='expense'?'支出':'收入'}・${escapeHtml(frequencyLabel(row))}・帳戶：${escapeHtml(row.counterpart_name)}${row.next_date?`・下次：${escapeHtml(row.next_date)}`:''}</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" data-recurring-delete="${row.id}" data-name="${escapeHtml(row.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div></article>`).join('')||'<p class="muted">尚未設定固定收支</p>';
     $('#recurring-list').querySelectorAll('[data-recurring-edit]').forEach(el=>el.addEventListener('click',()=>openEditor(rows.find(row=>row.id===el.dataset.recurringEdit))));
-    $('#recurring-list').querySelectorAll('[data-recurring-delete]').forEach(el=>el.addEventListener('click',async()=>{
+    $('#recurring-list').querySelectorAll('[data-recurring-delete]').forEach(el=>el.addEventListener('click',async event=>{
+      event.stopPropagation();
       if(!confirm(`確定刪除「${el.dataset.name}」這筆固定收支設定？已經產生的帳務不會被刪除。`))return;
       const response=await fetch('/api/recurring/'+el.dataset.recurringDelete,{method:'DELETE'}),result=await response.json();
       if(!response.ok)return alert(result.error||'刪除失敗');
@@ -281,22 +517,37 @@ function setupRecurringTransactions(){
   $('#recurring-create').addEventListener('click',()=>openEditor());
   $('#recurring-editor-close').addEventListener('click',()=>editor.close());
   $('#recurring-editor-cancel').addEventListener('click',()=>editor.close());
-  $('#recurring-editor-type').addEventListener('change',refreshCategoryOptions);
-  $('#recurring-editor-frequency').addEventListener('change',refreshFrequencyFields);
+  $('#recurring-editor-type').addEventListener('change',()=>{recurringEditorCategoryId=null;recurringEditorMajor=null;refreshRecurringCategories(false)});
+  $('#recurring-editor-frequency-buttons').querySelectorAll('[data-frequency]').forEach(freqButton=>freqButton.addEventListener('click',()=>setFrequencyButtons(freqButton.dataset.frequency)));
+  $('#recurring-editor-end-continuous').addEventListener('change',()=>{$('#recurring-editor-end').disabled=true});
+  $('#recurring-editor-end-specific').addEventListener('change',()=>{$('#recurring-editor-end').disabled=false});
   $('#recurring-editor-form').addEventListener('submit',async event=>{
     event.preventDefault();
-    const frequency=$('#recurring-editor-frequency').value;
+    if(!recurringEditorCategoryId){$('#recurring-editor-error').textContent='請選擇小分類';return}
+    const selectedFrequency=recurringEditorFrequency;
+    let frequency,dayOfMonth,monthOfYear,startDate,endDate;
+    if(selectedFrequency==='irregular'){
+      const irregularDate=$('#recurring-editor-irregular-date').value;
+      const [year,month,day]=irregularDate.split('-').map(Number);
+      frequency='yearly';dayOfMonth=day;monthOfYear=month;startDate=irregularDate;endDate=irregularDate;
+    }else{
+      frequency=selectedFrequency;
+      dayOfMonth=Number($('#recurring-editor-day').value);
+      monthOfYear=frequency==='yearly'?Number($('#recurring-editor-month').value):null;
+      startDate=$('#recurring-editor-start').value;
+      endDate=$('#recurring-editor-end-specific').checked?($('#recurring-editor-end').value||null):null;
+    }
     const payload={
       name:$('#recurring-editor-name').value,
       account_type:$('#recurring-editor-type').value,
-      category_account_id:$('#recurring-editor-category').value,
+      category_account_id:recurringEditorCategoryId,
       counterpart_account_id:$('#recurring-editor-account').value,
       amount_minor:Math.round(Number($('#recurring-editor-amount').value)),
       frequency,
-      day_of_month:Number($('#recurring-editor-day').value),
-      month_of_year:frequency==='yearly'?Number($('#recurring-editor-month').value):null,
-      start_date:$('#recurring-editor-start').value,
-      end_date:$('#recurring-editor-end').value||null,
+      day_of_month:dayOfMonth,
+      month_of_year:monthOfYear,
+      start_date:startDate,
+      end_date:endDate,
     };
     const url=editingId?'/api/recurring/'+editingId:'/api/recurring',method=editingId?'PUT':'POST';
     const response=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),result=await response.json();

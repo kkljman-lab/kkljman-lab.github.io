@@ -49,7 +49,10 @@ function validateEntries(db, entries) {
 }
 
 function isSuperseded(db, transactionId) {
-  return db.all("SELECT 1 FROM transactions WHERE revision_of_id=? LIMIT 1", [transactionId]).length > 0;
+  // 跟 schema.sql 的 current_transactions view 用同一個判斷方式：如果編輯出來的
+  // 新版本後來自己也被作廢了，就不算數——舊版本其實又變回目前有效的那一筆，
+  // 應該可以繼續刪除／編輯，不能因為「曾經被編輯過」就一律鎖住。
+  return db.all("SELECT 1 FROM transactions WHERE revision_of_id=? AND status!='voided'", [transactionId]).length > 0;
 }
 
 // 對應桌面版 accounting.py 的 _validate_exchange：外幣金額×匯率四捨五入後

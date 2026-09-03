@@ -1,13 +1,13 @@
-const CACHE_NAME = "accounting-shell-v112";
+const CACHE_NAME = "accounting-shell-v142";
 const SHELL_ASSETS = [
   "/",
-  "/app.css?v=30",
-  "/menu.css?v=17",
-  "/app.js?v=74",
+  "/app.css?v=32",
+  "/menu.css?v=19",
+  "/app.js?v=93",
   "/offline.js?v=3",
   "/sync.js?v=4",
   "/offline/google-auth.js?v=1",
-  "/offline/sync-ui.js?v=7",
+  "/offline/sync-ui.js?v=10",
   "/offline/onboarding.js?v=1",
   "/manifest.webmanifest",
   // 手機離線引擎（PROJECT_SPEC.md 第 13 節）：這些檔案沒有另外做版本查詢字串，
@@ -19,6 +19,8 @@ const SHELL_ASSETS = [
   "/offline/accounting.js",
   "/offline/categories.js",
   "/offline/recurring.js",
+  "/offline/stock_holdings.js",
+  "/offline/stock-names.json",
   "/offline/importer.js",
   "/offline/exporter.js",
   "/offline/cp950-table.json",

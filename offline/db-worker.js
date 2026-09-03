@@ -6,6 +6,7 @@ import sqlite3InitModule from "/vendor/sqlite-wasm/index.mjs";
 import { AccountingValidationError, accountBalances, annualReport, createTransaction, listSyncConflicts, monthlyReport, resolveSyncConflict, transactionDetail, updateTransaction, voidTransaction } from "/offline/accounting.js";
 import { addShortcut, createBankAccount, createCategory, deactivateCategory, listBankAccounts, listCategories, listCategoryManagement, moveCategory, removeShortcut, renameCategory, reorderCategories, seedStarterLedger } from "/offline/categories.js";
 import { createRecurringRule, deactivateRecurringRule, listRecurringRules, processRecurringRules, updateRecurringRule } from "/offline/recurring.js";
+import { createStockHolding, deactivateStockHolding, listStockHoldings, lookupStockName, lookupStockTicker, saveDividendLookup, updateStockHolding } from "/offline/stock_holdings.js";
 import { ImportValidationError, importCsv } from "/offline/importer.js";
 import { exportCsv } from "/offline/exporter.js";
 import { SyncError, autoSyncSettings, deviceId, deviceName, driveEncryptionKey, drivePull, drivePush, driveStatus, driveSyncNow, exportSnapshot, mergeRemoteSnapshot, resolveClientCredentials, resolveDriveCredentials, setAutoSyncSettings, setDeviceName, setDriveEncryptionKey, setDriveRefreshToken, shouldAutoSyncNow } from "/offline/sync.js";
@@ -58,6 +59,9 @@ async function openState() {
   const accountColumns = makeDbFacade(sqlite3Db).all("PRAGMA table_info(accounts)").map((row) => row.name);
   if (!accountColumns.includes("child_order")) sqlite3Db.exec("ALTER TABLE accounts ADD COLUMN child_order INTEGER");
   if (!accountColumns.includes("icon")) sqlite3Db.exec("ALTER TABLE accounts ADD COLUMN icon TEXT");
+  const stockHoldingColumns = makeDbFacade(sqlite3Db).all("PRAGMA table_info(stock_holdings)").map((row) => row.name);
+  if (!stockHoldingColumns.includes("broker_account")) sqlite3Db.exec("ALTER TABLE stock_holdings ADD COLUMN broker_account TEXT");
+  if (!stockHoldingColumns.includes("dividend_lookup_json")) sqlite3Db.exec("ALTER TABLE stock_holdings ADD COLUMN dividend_lookup_json TEXT");
   const db = makeDbFacade(sqlite3Db);
   // 真正空白的帳本（沒有匯入過 CSV，也還沒跟其他裝置同步過，例如朋友第一次用
   // kkljman-lab.github.io 那份離線版本）預先建立一個「現金」帳戶跟使用者實際
@@ -184,6 +188,33 @@ async function handleApi(db, poolUtil, { method, path, query, body, headers }) {
   if (method === "DELETE" && recurringMatch) {
     deactivateRecurringRule(db, recurringMatch[1]);
     return { status: 200, body: { status: "deactivated" } };
+  }
+  if (method === "GET" && path === "/api/stock-holdings") {
+    return { status: 200, body: listStockHoldings(db) };
+  }
+  if (method === "GET" && path === "/api/stock-name-lookup") {
+    return { status: 200, body: { name: await lookupStockName(query.ticker || "") } };
+  }
+  if (method === "GET" && path === "/api/stock-ticker-lookup") {
+    return { status: 200, body: { ticker: await lookupStockTicker(query.name || "") } };
+  }
+  if (method === "POST" && path === "/api/stock-holdings") {
+    const holdingId = await createStockHolding(db, String(body.ticker || ""), String(body.name || ""), body.quantity, body.broker_account ?? null);
+    return { status: 201, body: { id: holdingId } };
+  }
+  const stockHoldingMatch = path.match(/^\/api\/stock-holdings\/([^/]+)$/);
+  if (method === "PUT" && stockHoldingMatch) {
+    updateStockHolding(db, stockHoldingMatch[1], String(body.name || ""), body.quantity, body.broker_account ?? null);
+    return { status: 200, body: { id: stockHoldingMatch[1] } };
+  }
+  if (method === "DELETE" && stockHoldingMatch) {
+    deactivateStockHolding(db, stockHoldingMatch[1]);
+    return { status: 200, body: { status: "deactivated" } };
+  }
+  const dividendLookupSaveMatch = path.match(/^\/api\/stock-holdings\/([^/]+)\/dividend-lookup$/);
+  if (method === "PUT" && dividendLookupSaveMatch) {
+    saveDividendLookup(db, dividendLookupSaveMatch[1], body.result ?? null);
+    return { status: 200, body: { id: dividendLookupSaveMatch[1] } };
   }
   if (method === "GET" && path === "/api/categories") {
     return { status: 200, body: listCategories(db, query.type || "expense") };

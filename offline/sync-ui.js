@@ -22,6 +22,22 @@
     // 原本表單最下面那顆「儲存設定」，是給上面已經隱藏的舊版排程備份用的，
     // 上面的欄位都不見了，這顆按鈕留著只會讓人不知道在存什麼，一併隱藏。
     document.querySelector('#cloud-settings-form > button[type="submit"]')?.style.setProperty("display", "none");
+    // setupGoogleDriveSync() 底下新增的裝置名稱／加密金鑰／自動同步時間這些
+    // 輸入框，是直接插進 #cloud-settings-form 這個表單裡面的（沿用同一個表單
+    // 容器，方便版面）——但這個表單原本綁的 submit 監聽器（app.js 的
+    // upgradeCloudScheduleSettings()）是桌面版舊版排程備份專用，會送到離線
+    // 引擎沒有實作的 /api/cloud-settings，在這幾個新輸入框按 Enter 鍵（瀏覽器
+    // 對表單裡的輸入框預設行為）就會誤觸發，跳出「尚未支援這個路徑」的錯誤。
+    // 用 capture 階段攔截、擋掉整個表單的 submit，早於 app.js 自己掛的（非
+    // capture）監聽器執行，離線引擎底下這個表單本來就沒有東西需要「送出」。
+    document.getElementById("cloud-settings-form")?.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
   }
 
   function setupGoogleDriveSync() {
@@ -384,44 +400,36 @@
   // 那個完整畫面——打開主選單時順便檢查一次雲端版本，有新版本就提示，
   // 沒有就直接說「目前已是最新版本」，按下去就跟完整畫面裡的立即同步一樣。
   function setupQuickSyncButton() {
-    const profile = document.querySelector(".menu-profile");
-    const title = document.querySelector(".menu-title");
-    if (!profile || !title) return;
+    const actions = document.querySelector(".menu-actions");
+    const annualButton = document.getElementById("menu-annual");
+    if (!actions) return;
 
-    // 主選單標題那排（主選單…×）中間的空白處放一顆「立即同步」按鈕 + 一行純文字狀態，
-    // 兩者疊在一起、水平置中在整個黃色標題列裡——「主選單」文字較短、×固定在最右邊，
-    // 置中的位置剛好落在兩者中間的空白處，不會互相重疊，用絕對定位就好，不用去量
-    // 「主選單」文字實際渲染寬度。之前是一個又是按鈕又顯示狀態的膠囊，使用者要求拆開：
-    // 狀態文字改成純黑字（不要白底黑框），按鈕獨立出來放在狀態文字上面。
-    const group = document.createElement("div");
-    group.className = "menu-sync-group";
-    title.after(group);
-
+    // 原本是獨立疊在主選單標題列上、絕對定位置中的膠囊；使用者要求改成跟「年度收支
+    // 統計」那些選單項目同一種格式（清單裡的一個按鈕），放在清單最上面（年度收支統計
+    // 上面）——直接沿用 .menu-actions button 既有的樣式，圖示＋文字兩欄，狀態文字
+    // 用 <small> 疊在標題文字下面（跟很早期「立即備份」那顆按鈕的堆疊排版一樣）。
     const button = document.createElement("button");
     button.type = "button";
     button.id = "menu-quick-sync";
     button.className = "menu-quick-sync";
-    button.textContent = "立即同步";
-    group.append(button);
+    button.innerHTML = '<span>☁</span><span><b>立即同步</b><small id="menu-sync-status">檢查中…</small></span>';
+    if (annualButton) annualButton.before(button);
+    else actions.prepend(button);
 
-    const status = document.createElement("p");
-    status.id = "menu-sync-status";
-    status.className = "menu-sync-status";
-    status.textContent = "☁ 檢查中…";
-    group.append(status);
+    const status = document.getElementById("menu-sync-status");
 
     const checkStatus = async () => {
       try {
         const result = await fetch("/api/offline-sync/drive-status", { cache: "no-store" }).then((response) => response.json());
         if (!result.connected || !result.encryption_key_set) {
-          status.textContent = "☁ 尚未連結雲端同步";
+          status.textContent = "尚未連結雲端同步";
           button.disabled = true;
           return;
         }
         button.disabled = false;
         status.textContent = result.remote_revision > result.local_revision
-          ? "☁ 雲端有新版本，建議同步"
-          : "☁ 目前已是最新版本";
+          ? (result.remote_name ? `雲端有新版本［${result.remote_name}］` : "雲端有新版本，建議同步")
+          : "目前已是最新版本";
       } catch (error) {
         button.disabled = false;
         status.textContent = "";
@@ -430,8 +438,7 @@
 
     button.addEventListener("click", async () => {
       button.disabled = true;
-      const label = button.textContent;
-      button.textContent = "同步中…";
+      status.textContent = "同步中…";
       try {
         const response = await fetch("/api/offline-sync/drive-sync-now", { method: "POST" });
         const result = await response.json();
@@ -441,7 +448,6 @@
       } catch (error) {
         showToast(error.message);
       } finally {
-        button.textContent = label;
         await checkStatus();
       }
     });

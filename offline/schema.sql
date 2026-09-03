@@ -218,4 +218,19 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS stock_holdings (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    name TEXT NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    broker_account TEXT,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 上次「查詢股利」的完整結果（跟 dividend_lookup.py 的 fetch_dividend_info() 回傳
+    -- 的字典結構一樣，失敗時是 {"error": "..."}），存成 JSON 字串。查詢股利改成
+    -- 不再每次打開視窗就自動查一次（見 PROJECT_SPEC.md 13.65），存起來才能讓下次
+    -- 打開視窗時直接顯示上次查到的結果，不用等網路查詢。
+    dividend_lookup_json TEXT
+);
+
 INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);

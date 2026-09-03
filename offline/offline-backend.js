@@ -109,11 +109,20 @@
     });
   }
 
+  // 股利查詢（/api/stock-dividend-lookup）本質上是去抓 cmoney.tw 這個外部網站，
+  // 瀏覽器裡的 SQLite 完全沒有能力做到這件事——瀏覽器直接連 cmoney.tw 本身也不行
+  // （實測過對方沒有回傳允許跨來源讀取的 CORS 標頭，瀏覽器會直接擋下來，不是
+  // 程式碼寫法能解決的）。這個路徑刻意不攔截、放行給真正的網路請求：這一頁的
+  // 網址（例如透過 Tailscale 連到桌面版）如果背後真的有 Python 伺服器在跑，
+  // 用 curl 幫忙查就能正常運作；桌面版沒開著、連不到的話，這裡就會像真的斷線
+  // 一樣直接查詢失敗，跟桌面版本身沒網路時的行為一致，不是新的錯誤模式。
+  const PASSTHROUGH_API_PATHS = new Set(["/api/stock-dividend-lookup"]);
+
   const originalFetch = window.fetch.bind(window);
   window.fetch = async function offlineFetch(input, init) {
     const request = typeof input === "string" || input instanceof URL ? String(input) : input.url;
     const url = new URL(request, location.origin);
-    if (url.origin !== location.origin || !url.pathname.startsWith("/api/")) {
+    if (url.origin !== location.origin || !url.pathname.startsWith("/api/") || PASSTHROUGH_API_PATHS.has(url.pathname)) {
       return originalFetch(input, init);
     }
     const method = (init && init.method) || "GET";

@@ -5,8 +5,21 @@
 // 編碼器可以做這個檢查，這裡先省略。之後如果要補，需要自己刻一份 CP950 對照表或改用
 // 其他偵測方式；在那之前，離線版允許輸入一些桌面版會擋下來的罕見字元。
 import { AccountingValidationError } from "/offline/accounting.js";
+import { deviceId } from "/offline/sync.js";
 
 const LOCAL_BATCH_ID = "local-categories";
+
+// 手動新增分類/帳戶的匯入批次 id 要各裝置獨立，不能全部裝置共用同一個固定
+// 字串：accounts 表格對 (import_batch_id, source_row_number) 有唯一值限制，
+// 如果所有裝置都共用同一個批次 id、各自從 1 開始編號，兩台裝置各自新增的
+// 分類在編號上一定會撞在一起，合併時對方那筆會被 INSERT OR IGNORE 靜默略過，
+// 即使兩筆分類的真正 id 完全不同——被略過的分類後面會留下沒有帳戶可以參照
+// 的孤兒列（category_shortcuts 等表格的 FOREIGN KEY constraint failed）。
+// 手機在「清除本機資料重新開始」後重新整批建立起始分類、再跟電腦同步時
+// 就會踩到，見桌面版 categories.py 的 _local_batch_id() 與 PROJECT_SPEC.md。
+function localBatchId(db) {
+  return `${LOCAL_BATCH_ID}-${deviceId(db)}`;
+}
 // 跟桌面版 categories.py／匯入用的 importer.py 同一套 uuid5 算法（NAMESPACE_DNS
 // 這個命名空間 UUID 也完全相同），讓「新增分類」改用固定編號、不再用隨機亂數：
 // 手機/電腦各自獨立新增同名分類時會得到相同的內部 id，跨裝置同步合併資料庫時
@@ -274,17 +287,18 @@ export async function createCategory(db, name, accountType, parentName) {
   fields[6] = "1";
   fields[8] = "Y";
   const accountId = await uuid5(NAMESPACE_DNS, `personal-accounting.local/category/${accountType}/${name}`);
+  const batchId = localBatchId(db);
   db.transaction(() => {
     db.run(
       `INSERT OR IGNORE INTO import_batches(id, source_name, sha256, encoding, importer_version, status, source_rows, account_rows, completed_at)
-       VALUES (?, '本機新增分類', 'local-categories', 'cp950', 'local', 'completed', 0, 0, CURRENT_TIMESTAMP)`,
-      [LOCAL_BATCH_ID],
+       VALUES (?, '本機新增分類', ?, 'cp950', 'local', 'completed', 0, 0, CURRENT_TIMESTAMP)`,
+      [batchId, batchId],
     );
-    const rowNumber = db.one("SELECT coalesce(max(source_row_number), 0) + 1 AS n FROM accounts WHERE import_batch_id=?", [LOCAL_BATCH_ID]).n;
+    const rowNumber = db.one("SELECT coalesce(max(source_row_number), 0) + 1 AS n FROM accounts WHERE import_batch_id=?", [batchId]).n;
     db.run(
       `INSERT INTO accounts(id, import_batch_id, source_row_number, source_name, name, account_type, source_type, parent_name, active, source_fields_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-      [accountId, LOCAL_BATCH_ID, rowNumber, name, name, accountType, sourceType, parentName, JSON.stringify(fields)],
+      [accountId, batchId, rowNumber, name, name, accountType, sourceType, parentName, JSON.stringify(fields)],
     );
     const order = db.one("SELECT coalesce(max(shortcut_order), 0) + 1 AS n FROM category_shortcuts").n;
     db.run("INSERT INTO category_shortcuts(account_id, shortcut_order) VALUES (?, ?)", [accountId, order]);
@@ -333,17 +347,18 @@ export async function createBankAccount(db, name, accountType, parentName) {
   fields[6] = "1";
   fields[8] = "Y";
   const accountId = await uuid5(NAMESPACE_DNS, `personal-accounting.local/category/${accountType}/${name}`);
+  const batchId = localBatchId(db);
   db.transaction(() => {
     db.run(
       `INSERT OR IGNORE INTO import_batches(id, source_name, sha256, encoding, importer_version, status, source_rows, account_rows, completed_at)
-       VALUES (?, '本機新增分類', 'local-categories', 'cp950', 'local', 'completed', 0, 0, CURRENT_TIMESTAMP)`,
-      [LOCAL_BATCH_ID],
+       VALUES (?, '本機新增分類', ?, 'cp950', 'local', 'completed', 0, 0, CURRENT_TIMESTAMP)`,
+      [batchId, batchId],
     );
-    const rowNumber = db.one("SELECT coalesce(max(source_row_number), 0) + 1 AS n FROM accounts WHERE import_batch_id=?", [LOCAL_BATCH_ID]).n;
+    const rowNumber = db.one("SELECT coalesce(max(source_row_number), 0) + 1 AS n FROM accounts WHERE import_batch_id=?", [batchId]).n;
     db.run(
       `INSERT INTO accounts(id, import_batch_id, source_row_number, source_name, name, account_type, source_type, parent_name, active, source_fields_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-      [accountId, LOCAL_BATCH_ID, rowNumber, name, name, accountType, sourceType, parentName, JSON.stringify(fields)],
+      [accountId, batchId, rowNumber, name, name, accountType, sourceType, parentName, JSON.stringify(fields)],
     );
     db.run(
       "INSERT INTO audit_events(event_type, entity_type, entity_id, details_json) VALUES ('account_created', 'account', ?, ?)",

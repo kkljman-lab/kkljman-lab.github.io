@@ -428,6 +428,12 @@ const DEFAULT_INCOME_CATEGORIES = [
   "三節獎金", "年終獎金", "獎金收入", "業績獎金", "兼職收入", "投資收入", "其它收入",
 ];
 
+// EXPENSE_CATEGORY_HIERARCHY 裡有幾組其實是同一個分類的不同寫法（傢/家用字差異、
+// 全形/半形符號），留著是因為 repairCategoryHierarchy() 要能認出舊 E-Money 匯入
+// 資料裡實際出現過的每一種寫法；但全新帳本（例如朋友第一次用 GitHub Pages 那份
+// 離線版本）不需要兩個意思一樣的分類一次全部建出來，起始分類只挑其中一個。
+const STARTER_HIERARCHY_EXCLUDE = new Set(["住屋傢飾", "手機＋網路費", "遊戲,軟體,玩具"]);
+
 export async function seedStarterLedger(db) {
   await createBankAccount(db, "現金", "asset");
   for (const major of MAJOR_EXPENSE_CATEGORIES) {
@@ -435,6 +441,7 @@ export async function seedStarterLedger(db) {
   }
   for (const [major, children] of Object.entries(EXPENSE_CATEGORY_HIERARCHY)) {
     for (const child of children) {
+      if (STARTER_HIERARCHY_EXCLUDE.has(child)) continue;
       await createCategory(db, child, "expense", major);
     }
   }

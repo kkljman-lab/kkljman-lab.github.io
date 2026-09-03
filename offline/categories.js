@@ -286,7 +286,13 @@ export async function createCategory(db, name, accountType, parentName) {
   fields[5] = name;
   fields[6] = "1";
   fields[8] = "Y";
-  const accountId = await uuid5(NAMESPACE_DNS, `personal-accounting.local/category/${accountType}/${name}`);
+  // 命名空間跟 importer.js 匯入帳戶用的算法完全一致（只用名稱，不含
+  // accountType）——舊版這裡曾經多帶 accountType，原意是避免「同名不同類型」
+  // 的分類誤判成同一筆，但這個設計反而讓手機清空重來後重建的起始分類（跟
+  // 原本從 CSV 匯入的分類同名）算出不同的 id，同步合併時被當成兩筆不同分類，
+  // 永久留下一筆沒有任何交易的空分類（見桌面版 categories.py 的
+  // create_category() 與 PROJECT_SPEC.md 的完整說明）。
+  const accountId = await uuid5(NAMESPACE_DNS, "personal-accounting.local/account/" + name);
   const batchId = localBatchId(db);
   db.transaction(() => {
     db.run(
@@ -346,7 +352,13 @@ export async function createBankAccount(db, name, accountType, parentName) {
   fields[5] = name;
   fields[6] = "1";
   fields[8] = "Y";
-  const accountId = await uuid5(NAMESPACE_DNS, `personal-accounting.local/category/${accountType}/${name}`);
+  // 命名空間跟 importer.js 匯入帳戶用的算法完全一致（只用名稱，不含
+  // accountType）——舊版這裡曾經多帶 accountType，原意是避免「同名不同類型」
+  // 的分類誤判成同一筆，但這個設計反而讓手機清空重來後重建的起始分類（跟
+  // 原本從 CSV 匯入的分類同名）算出不同的 id，同步合併時被當成兩筆不同分類，
+  // 永久留下一筆沒有任何交易的空分類（見桌面版 categories.py 的
+  // create_category() 與 PROJECT_SPEC.md 的完整說明）。
+  const accountId = await uuid5(NAMESPACE_DNS, "personal-accounting.local/account/" + name);
   const batchId = localBatchId(db);
   db.transaction(() => {
     db.run(

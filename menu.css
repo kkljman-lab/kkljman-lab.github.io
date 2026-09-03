@@ -8,7 +8,7 @@
 .menu-quick-sync b,.menu-quick-sync small{display:block}
 .menu-quick-sync small{font-size:11px;font-weight:600;margin-top:2px;color:#6d756f}
 .menu-profile-rule{height:1px;background:#17231f22;margin:16px 0 14px}
-.menu-actions{display:grid;gap:12px;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1px 3px}.menu-actions button{display:grid;grid-template-columns:34px 1fr;align-items:center;text-align:left;border:2px solid #17231f;border-radius:999px;padding:13px 20px;background:#fff;color:#17231f;box-shadow:none;font-size:16px}.menu-actions button span{font-size:21px;text-align:center}.menu-actions button:active{background:#edf2ef}
+.menu-actions{display:grid;gap:12px;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:1px 3px}.menu-actions button{display:grid;grid-template-columns:34px 1fr;align-items:center;text-align:left;border:2px solid #17231f;border-radius:999px;padding:13px 20px;background:#fff;color:#17231f;box-shadow:none;font-size:16px;touch-action:pan-y}.menu-actions button span{font-size:21px;text-align:center}.menu-actions button:active{background:#edf2ef}
 
 /* Whole page scrolls together as one; nothing is pinned except the floating buttons. */
 #transactions{padding:2px 5px calc(92px + env(safe-area-inset-bottom)) 2px}

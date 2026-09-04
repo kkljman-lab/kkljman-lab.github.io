@@ -146,18 +146,27 @@ export function processRecurringRules(db, today) {
   const rows = db.all("SELECT * FROM recurring_transactions WHERE active=1");
   let created = 0;
   for (const row of rows) {
-    const start = parseDate(row.start_date, "開始日期");
-    const through = row.end_date ? (parseDate(row.end_date, "結束日期") < today ? parseDate(row.end_date, "結束日期") : today) : today;
-    let due = occurrences(row.frequency, row.day_of_month, row.month_of_year, start, through);
-    if (row.last_generated_date) due = due.filter((item) => toIso(item) > row.last_generated_date);
-    for (const occurrence of due) {
-      const amount = row.amount_minor;
-      const entries = row.account_type === "expense"
-        ? [{ account_id: row.category_account_id, debit_minor: amount, credit_minor: 0 }, { account_id: row.counterpart_account_id, debit_minor: 0, credit_minor: amount }]
-        : [{ account_id: row.counterpart_account_id, debit_minor: amount, credit_minor: 0 }, { account_id: row.category_account_id, debit_minor: 0, credit_minor: amount }];
-      createTransaction(db, toIso(occurrence), `${row.name}（定期自動記帳）`, entries);
-      db.run("UPDATE recurring_transactions SET last_generated_date=? WHERE id=?", [toIso(occurrence), row.id]);
-      created += 1;
+    // 這個函式在每次 GET /api/accounts 都會跑一次（見 db-worker.js），所以任何一筆
+    // 規則處理失敗（例如它指到的分類/帳戶後來被停用或刪除）絕對不能讓整個請求
+    // 一起失敗——那樣會讓使用者連「打開分類/固定收支畫面去修正那筆規則」都做
+    // 不到，整個帳本永久打不開（實機發生過：朋友的手機每次一開就載入失敗）。
+    // 跳過這筆、繼續處理其他規則，並把原因留在 console 方便之後排查。
+    try {
+      const start = parseDate(row.start_date, "開始日期");
+      const through = row.end_date ? (parseDate(row.end_date, "結束日期") < today ? parseDate(row.end_date, "結束日期") : today) : today;
+      let due = occurrences(row.frequency, row.day_of_month, row.month_of_year, start, through);
+      if (row.last_generated_date) due = due.filter((item) => toIso(item) > row.last_generated_date);
+      for (const occurrence of due) {
+        const amount = row.amount_minor;
+        const entries = row.account_type === "expense"
+          ? [{ account_id: row.category_account_id, debit_minor: amount, credit_minor: 0 }, { account_id: row.counterpart_account_id, debit_minor: 0, credit_minor: amount }]
+          : [{ account_id: row.counterpart_account_id, debit_minor: amount, credit_minor: 0 }, { account_id: row.category_account_id, debit_minor: 0, credit_minor: amount }];
+        createTransaction(db, toIso(occurrence), `${row.name}（定期自動記帳）`, entries);
+        db.run("UPDATE recurring_transactions SET last_generated_date=? WHERE id=?", [toIso(occurrence), row.id]);
+        created += 1;
+      }
+    } catch (error) {
+      console.error("[recurring] 略過一筆處理失敗的固定收支規則：", row.name, error);
     }
   }
   return created;

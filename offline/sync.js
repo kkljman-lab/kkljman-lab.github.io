@@ -17,9 +17,27 @@
 // 這裡刻意不用 SQL 的 ATTACH DATABASE 語法合併——直接在 JS 裡逐表 SELECT 兩邊、
 // 用 INSERT OR IGNORE 寫回主資料庫，邏輯跟桌面版一樣，只是換一種寫法表達。
 import { detectSyncConflicts } from "/offline/accounting.js";
-import { DriveError, driveDownloadFile, driveListFiles, driveUploadFile, decryptData, encryptData, refreshAccessToken } from "/offline/drive.js";
+import { DriveError, driveDeleteFile, driveDownloadFile, driveListFiles, driveUploadFile, decryptData, encryptData, refreshAccessToken } from "/offline/drive.js";
 
 export class SyncError extends Error {}
+
+// 對應桌面版 sync.py 的 KEEP_REVISIONS／_cleanup_old_revisions()：同步快照只有
+// 「最新版本」有實際用處，每次上傳後只留最近這幾份，避免 Google Drive 空間被
+// 永遠不會再用到的舊快照占滿。這裡原本漏掉這一段，離線引擎（手機、平板）每次
+// 同步都會在 Drive 上多留一個檔案、從來不會清掉。
+const KEEP_REVISIONS = 3;
+
+async function cleanupOldRevisions(accessToken, files) {
+  const ordered = [...files].sort((a, b) => b.revision - a.revision);
+  for (const entry of ordered.slice(KEEP_REVISIONS)) {
+    if (!entry.id) continue;
+    try {
+      await driveDeleteFile(accessToken, entry.id);
+    } catch (_) {
+      // 清舊檔失敗不影響這次同步本身有沒有成功，下次同步再試一次即可。
+    }
+  }
+}
 
 // 幾個存在 app_settings 的小設定，跟 deviceId() 是同一種存法（key/value，沒有的話
 // 用 INSERT 補一筆）。跟桌面版不同的地方只有：離線引擎沒有登入 session，所以
@@ -188,6 +206,7 @@ async function pushWithContext(poolUtil, db, dbName, encryptionKey, accessToken,
   const name = `${label}-${stamp}.pacb`;
   const uploaded = await driveUploadFile(accessToken, name, encrypted, { revision: String(nextRevision), device_id: device });
   setLastSeenRevision(db, nextRevision);
+  await cleanupOldRevisions(accessToken, [...files, { id: uploaded.id, revision: nextRevision }]);
   return { status: "pushed", revision: nextRevision, file: uploaded.name || name };
 }
 

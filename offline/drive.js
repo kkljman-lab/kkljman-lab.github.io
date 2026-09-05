@@ -12,6 +12,7 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime,appProperties";
 const LIST_URL = "https://www.googleapis.com/drive/v3/files";
 const DOWNLOAD_URL = (fileId) => `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+const DELETE_URL = (fileId) => `https://www.googleapis.com/drive/v3/files/${fileId}`;
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 export const SCOPE = "https://www.googleapis.com/auth/drive.file";
 // 跟桌面版 sync.py 的 SYNC_FOLDER 用同一個標籤（appProperties，不是真正的 Drive
@@ -153,6 +154,12 @@ export async function driveDownloadFile(accessToken, fileId) {
   const response = await fetch(DOWNLOAD_URL(fileId), { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!response.ok) throw new DriveError("Google Drive 下載失敗");
   return new Uint8Array(await response.arrayBuffer());
+}
+
+// 對應桌面版 cloud_backup.py 的 delete_file()——刪掉舊版本快照用，見 sync.js
+// 的 cleanupOldRevisions()。
+export async function driveDeleteFile(accessToken, fileId) {
+  await fetch(DELETE_URL(fileId), { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
 }
 
 // 跟 cloud_backup.py 的 encrypt_data／decrypt_data 位元組完全對應：

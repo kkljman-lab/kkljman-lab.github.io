@@ -11,8 +11,10 @@ import { ImportValidationError, importCsv } from "/offline/importer.js";
 import { exportCsv } from "/offline/exporter.js";
 import { SyncError, autoSyncSettings, deviceId, deviceName, driveEncryptionKey, drivePull, drivePush, driveStatus, driveSyncNow, exportSnapshot, mergeRemoteSnapshot, resolveClientCredentials, resolveDriveCredentials, setAutoSyncSettings, setDeviceName, setDriveEncryptionKey, setDriveRefreshToken, shouldAutoSyncNow } from "/offline/sync.js";
 import { exchangeCode } from "/offline/drive.js";
-// 見備忘：官方 README 範例（sqlite3.oo1.OpfsDb）在目前 vendor 的版本會靜默失敗，
-// 一定要用 installOpfsSAHPoolVfs()，見 static/offline/opfs-test-worker.js 的註解。
+// 官方 README 範例（sqlite3.oo1.OpfsDb／'opfs' in sqlite3）在目前 vendor 的版本
+// （3.53.0-build1）會靜默失敗（initOptions() 用 try/catch 吞掉錯誤，完全沒有任何
+// 警告訊息）——這個版本一定要用 sqlite3.installOpfsSAHPoolVfs() 這個新版 API，
+// 這是花了不少力氣一路追進 vendor 原始碼才確定的，記錄下來避免以後又繞回舊寫法。
 
 const DB_NAME = "/personal-accounting.sqlite3";
 let statePromise = null;

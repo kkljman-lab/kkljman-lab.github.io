@@ -515,6 +515,64 @@
     });
   }
 
+  // GitHub Pages 複本專用：朋友要求的「使用說明」——這份複本沒有桌面版、沒有人
+  // 可以隨口問，常見疑問（資料存在哪裡、換手機怎麼辦、清除本機資料是什麼意思）
+  // 直接寫在這裡，用 <details> 摺疊卡片呈現，跟「帳戶餘額」分組的收合樣式類似。
+  const HELP_TOPICS = [
+    {
+      q: "帳本資料存在哪裡？會不會不見？",
+      a: "資料只存在「這台手機、這個瀏覽器」裡面，不會自動上傳到雲端，也不會同步到別的手機或電腦。如果清除瀏覽器資料、換手機、換瀏覽器 App，資料就會不見，所以請養成偶爾用下面「匯出／匯入」備份一份 CSV 檔的習慣。",
+    },
+    {
+      q: "換手機、換瀏覽器之前要做什麼？",
+      a: "先打開主選單「匯出／匯入」，按「匯出 CSV」，把檔案傳到新手機（例如用 LINE 傳給自己、或存到雲端硬碟）。到新手機打開這個網站後，一樣打開「匯出／匯入」，改按「匯入 CSV」選剛剛的檔案就可以了。分類名稱要跟原本一樣，系統會自動對應，不會變成兩份重複的分類。",
+    },
+    {
+      q: "「清除本機資料」是做什麼的？",
+      a: "會把這台裝置上整份帳本清空、變回全新沒有資料的狀態，而且無法復原。只有在真的要重新開始記帳，或帳本資料出問題想砍掉重練時才使用。操作前請先確定已經用「匯出 CSV」備份過。",
+    },
+    {
+      q: "外觀設定可以做什麼？",
+      a: "可以換顏色風格、調整字體大小（有一個「更小」選項給螢幕字太大、顯示不完整的時候用）。設定會記在這台裝置上，換手機不會跟著過去，要到新手機再設定一次。",
+    },
+  ];
+
+  function setupHelpButton() {
+    const actions = document.querySelector(".menu-actions");
+    if (!actions) return;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "menu-help";
+    button.innerHTML = '<span>❓</span>使用說明';
+    const clearDataButton = document.getElementById("menu-clear-data");
+    if (clearDataButton) clearDataButton.before(button);
+    else actions.append(button);
+
+    const dialog = document.createElement("dialog");
+    dialog.id = "help-dialog";
+    dialog.innerHTML = `
+      <div class="utility-book">
+        <div class="dialog-title"><div><p class="eyebrow dark">HELP</p><h2>使用說明</h2></div><button type="button" class="icon-button" id="help-close">×</button></div>
+        <div style="display:grid;gap:10px">
+          ${HELP_TOPICS.map((topic) => `
+            <details style="border:1px solid var(--line);border-radius:14px;padding:4px 14px;background:#fff">
+              <summary style="cursor:pointer;padding:10px 0;font-weight:700">${escapeHtml(topic.q)}</summary>
+              <p class="muted" style="margin:0 0 12px">${escapeHtml(topic.a)}</p>
+            </details>
+          `).join("")}
+        </div>
+      </div>
+    `;
+    document.body.append(dialog);
+
+    button.addEventListener("click", () => {
+      document.getElementById("main-menu-dialog")?.close();
+      dialog.showModal();
+    });
+    document.getElementById("help-close").addEventListener("click", () => dialog.close());
+  }
+
   // 主選單頂端（黃色區塊）放一顆快速「立即同步」按鈕，不用先打開「帳務同步」
   // 那個完整畫面——打開主選單時順便檢查一次雲端版本，有新版本就提示，
   // 沒有就直接說「目前已是最新版本」，按下去就跟完整畫面裡的立即同步一樣。
@@ -616,8 +674,9 @@
   if (isGithubPagesCopy) {
     document.getElementById("menu-backup")?.remove();
     setupHiddenManualMergeInput();
-    setupStandaloneResetButton();
     setupAppearanceButton();
+    setupHelpButton();
+    setupStandaloneResetButton();
   } else {
     hideUnusedDesktopSections();
     setupGoogleDriveSync();

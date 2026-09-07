@@ -131,7 +131,15 @@ function setupStockHoldings(){
   async function refresh(){
     const rows=await fetch('/api/stock-holdings').then(r=>r.json());
     currentHoldings=rows;
-    $('#stock-holdings-list').innerHTML=rows.map(x=>`<article class="stock-holding-row" data-id="${x.id}" data-ticker="${escapeHtml(x.ticker)}" data-name="${escapeHtml(x.name)}" data-quantity="${x.quantity}" data-broker="${escapeHtml(x.broker_account||'')}" style="display:grid;gap:6px;padding:10px;border:1px solid #d9ded9;border-radius:12px;cursor:pointer"><span>📈 <strong>${escapeHtml(x.name)}</strong><small style="display:block;color:#6d756f">${escapeHtml(x.ticker)}・${x.quantity.toLocaleString()} 股${x.broker_account?'・'+escapeHtml(x.broker_account):''}</small></span><div id="dividend-row-${x.id}">${renderDividendInfo(x.dividend_lookup)}</div>${rowActions(x)}</article>`).join('')||'<p class="muted">尚無持股，按上面「＋ 新增持股」建立第一筆</p>';
+    const fillRecurringButton=x=>x.dividend_lookup&&!x.dividend_lookup.error?`<div style="display:flex;justify-content:flex-end;margin-top:2px"><button type="button" class="stock-dividend-fill-recurring" data-id="${x.id}" style="width:auto;padding:7px 14px;background:#2f6f57">填入固定收入</button></div>`:'';
+    $('#stock-holdings-list').innerHTML=rows.map(x=>`<article class="stock-holding-row" data-id="${x.id}" data-ticker="${escapeHtml(x.ticker)}" data-name="${escapeHtml(x.name)}" data-quantity="${x.quantity}" data-broker="${escapeHtml(x.broker_account||'')}" style="display:grid;gap:6px;padding:10px;border:1px solid #d9ded9;border-radius:12px;cursor:pointer"><span>📈 <strong>${escapeHtml(x.name)}</strong><small style="display:block;color:#6d756f">${escapeHtml(x.ticker)}・${x.quantity.toLocaleString()} 股${x.broker_account?'・'+escapeHtml(x.broker_account):''}</small></span><div id="dividend-row-${x.id}">${renderDividendInfo(x.dividend_lookup)}</div>${fillRecurringButton(x)}${rowActions(x)}</article>`).join('')||'<p class="muted">尚無持股，按上面「＋ 新增持股」建立第一筆</p>';
+    dialog.querySelectorAll('.stock-dividend-fill-recurring').forEach(button=>button.addEventListener('click',async event=>{
+      event.stopPropagation();
+      const holding=currentHoldings.find(h=>h.id===button.dataset.id);
+      if(!holding?.dividend_lookup||holding.dividend_lookup.error)return;
+      dialog.close();
+      await window.__openRecurringDividendEntry?.(holding,holding.dividend_lookup);
+    }));
     dialog.querySelectorAll('.stock-holding-row').forEach(article=>article.addEventListener('click',()=>{
       editingId=article.dataset.id;
       $('#stock-holding-editor-title').textContent='修改持股';
@@ -486,7 +494,7 @@ function setupRecurringTransactions(){
     $('#recurring-editor-name').value=item?.name||'';
     $('#recurring-editor-type').value=item?.account_type||'expense';
     refreshAccountOptions();
-    if(item)$('#recurring-editor-account').value=item.counterpart_account_id;
+    if(item?.counterpart_account_id)$('#recurring-editor-account').value=item.counterpart_account_id;
     $('#recurring-editor-amount').value=item?String(item.amount_minor):'';
     recurringEditorCategoryId=item?.category_account_id||null;
     recurringEditorMajor=null;
@@ -568,6 +576,26 @@ function setupRecurringTransactions(){
     editor.close();
     refresh();
   });
+
+  // 「股票持股」查完股利後可以直接一鍵帶進來開這個新增畫面，不用自己重打一次
+  // 名稱、金額、日期——用全域函式當入口，因為 setupStockHoldings() 那邊的
+  // dialog／openEditor 是各自獨立的閉包變數，沒辦法直接互相呼叫。
+  window.__openRecurringDividendEntry = async (holding, info) => {
+    const data = await fetch('/api/categories?type=income').then(r => r.json());
+    const investCategory = [...data.favorites, ...data.available].find(x => x.name === '投資收入');
+    const perShare = Number(info.latest_amount);
+    const suggestedAmount = Number.isFinite(perShare) ? Math.round(perShare * holding.quantity) : 0;
+    const paymentDate = info.payment_date ? info.payment_date.replace(/\//g, '-') : new Date().toLocaleDateString('sv-SE');
+    await openEditor({
+      name: `${holding.name}股利`,
+      account_type: 'income',
+      category_account_id: investCategory?.id || null,
+      amount_minor: suggestedAmount,
+      start_date: paymentDate,
+      end_date: paymentDate,
+    });
+    showToast('已代入查詢股利的建議金額，請依實際入帳金額確認');
+  };
 }
 setupRecurringTransactions();
 

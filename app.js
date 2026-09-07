@@ -109,7 +109,7 @@ function setupStockHoldings(){
   let editingId=null,currentHoldings=[];
   // 點卡片本身直接進入修改，不用另外按「修改」按鈕；「刪除」移到卡片右下角，
   // 按鈕自己的 click 監聽器裡會 stopPropagation，避免點刪除同時誤觸修改。
-  const rowActions=x=>`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:2px">${x.dividend_lookup&&!x.dividend_lookup.error?`<button type="button" class="stock-dividend-fill-recurring" data-id="${x.id}" style="width:auto;padding:7px 14px;background:#2f6f57">填入固定收入</button>`:''}<button type="button" class="stock-holding-delete" data-id="${x.id}" data-name="${escapeHtml(x.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div>`;
+  const rowActions=x=>`<div style="display:flex;justify-content:space-between;gap:8px;margin-top:2px">${x.dividend_lookup&&!x.dividend_lookup.error?`<button type="button" class="stock-dividend-fill-recurring" data-id="${x.id}" style="width:auto;padding:7px 14px;background:#2f6f57">填入固定收入</button>`:'<span></span>'}<button type="button" class="stock-holding-delete" data-id="${x.id}" data-name="${escapeHtml(x.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div>`;
   // 股利查詢結果直接併進同一張持股卡片裡（代號／股數／證券戶、最新股利／頻率／
   // 年殖利率、除息日／發放日都在同一個地方），不再是另外分開的一份清單——原本
   // 手機版是「持股清單」跟「股利查詢結果」兩份各自獨立的清單，跟桌面版原生

@@ -109,7 +109,7 @@ function setupStockHoldings(){
   let editingId=null,currentHoldings=[];
   // 點卡片本身直接進入修改，不用另外按「修改」按鈕；「刪除」移到卡片右下角，
   // 按鈕自己的 click 監聽器裡會 stopPropagation，避免點刪除同時誤觸修改。
-  const rowActions=x=>`<div style="display:flex;justify-content:flex-end;margin-top:2px"><button type="button" class="stock-holding-delete" data-id="${x.id}" data-name="${escapeHtml(x.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div>`;
+  const rowActions=x=>`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:2px">${x.dividend_lookup&&!x.dividend_lookup.error?`<button type="button" class="stock-dividend-fill-recurring" data-id="${x.id}" style="width:auto;padding:7px 14px;background:#2f6f57">填入固定收入</button>`:''}<button type="button" class="stock-holding-delete" data-id="${x.id}" data-name="${escapeHtml(x.name)}" style="width:auto;padding:7px 14px;background:#a43d35">刪除</button></div>`;
   // 股利查詢結果直接併進同一張持股卡片裡（代號／股數／證券戶、最新股利／頻率／
   // 年殖利率、除息日／發放日都在同一個地方），不再是另外分開的一份清單——原本
   // 手機版是「持股清單」跟「股利查詢結果」兩份各自獨立的清單，跟桌面版原生
@@ -131,8 +131,7 @@ function setupStockHoldings(){
   async function refresh(){
     const rows=await fetch('/api/stock-holdings').then(r=>r.json());
     currentHoldings=rows;
-    const fillRecurringButton=x=>x.dividend_lookup&&!x.dividend_lookup.error?`<div style="display:flex;justify-content:flex-end;margin-top:2px"><button type="button" class="stock-dividend-fill-recurring" data-id="${x.id}" style="width:auto;padding:7px 14px;background:#2f6f57">填入固定收入</button></div>`:'';
-    $('#stock-holdings-list').innerHTML=rows.map(x=>`<article class="stock-holding-row" data-id="${x.id}" data-ticker="${escapeHtml(x.ticker)}" data-name="${escapeHtml(x.name)}" data-quantity="${x.quantity}" data-broker="${escapeHtml(x.broker_account||'')}" style="display:grid;gap:6px;padding:10px;border:1px solid #d9ded9;border-radius:12px;cursor:pointer"><span>📈 <strong>${escapeHtml(x.name)}</strong><small style="display:block;color:#6d756f">${escapeHtml(x.ticker)}・${x.quantity.toLocaleString()} 股${x.broker_account?'・'+escapeHtml(x.broker_account):''}</small></span><div id="dividend-row-${x.id}">${renderDividendInfo(x.dividend_lookup)}</div>${fillRecurringButton(x)}${rowActions(x)}</article>`).join('')||'<p class="muted">尚無持股，按上面「＋ 新增持股」建立第一筆</p>';
+    $('#stock-holdings-list').innerHTML=rows.map(x=>`<article class="stock-holding-row" data-id="${x.id}" data-ticker="${escapeHtml(x.ticker)}" data-name="${escapeHtml(x.name)}" data-quantity="${x.quantity}" data-broker="${escapeHtml(x.broker_account||'')}" style="display:grid;gap:6px;padding:10px;border:1px solid #d9ded9;border-radius:12px;cursor:pointer"><span>📈 <strong>${escapeHtml(x.name)}</strong><small style="display:block;color:#6d756f">${escapeHtml(x.ticker)}・${x.quantity.toLocaleString()} 股${x.broker_account?'・'+escapeHtml(x.broker_account):''}</small></span><div id="dividend-row-${x.id}">${renderDividendInfo(x.dividend_lookup)}</div>${rowActions(x)}</article>`).join('')||'<p class="muted">尚無持股，按上面「＋ 新增持股」建立第一筆</p>';
     dialog.querySelectorAll('.stock-dividend-fill-recurring').forEach(button=>button.addEventListener('click',async event=>{
       event.stopPropagation();
       const holding=currentHoldings.find(h=>h.id===button.dataset.id);
@@ -584,7 +583,9 @@ function setupRecurringTransactions(){
     const data = await fetch('/api/categories?type=income').then(r => r.json());
     const investCategory = [...data.favorites, ...data.available].find(x => x.name === '投資收入');
     const perShare = Number(info.latest_amount);
-    const suggestedAmount = Number.isFinite(perShare) ? Math.round(perShare * holding.quantity) : 0;
+    // 集保結算所配發股利會收一筆固定的匯款手續費（10 元），從毛額扣掉，讓建議
+    // 金額更接近銀行實際入帳的數字；夠不到 10 元的極端情況夾在 0，不要變負數。
+    const suggestedAmount = Number.isFinite(perShare) ? Math.max(0, Math.round(perShare * holding.quantity) - 10) : 0;
     const paymentDate = info.payment_date ? info.payment_date.replace(/\//g, '-') : new Date().toLocaleDateString('sv-SE');
     await openEditor({
       name: `${holding.name}股利`,
@@ -594,7 +595,7 @@ function setupRecurringTransactions(){
       start_date: paymentDate,
       end_date: paymentDate,
     });
-    showToast('已代入查詢股利的建議金額，請依實際入帳金額確認');
+    showToast('已代入查詢股利的建議金額（已扣 10 元手續費），請依實際入帳金額確認');
   };
 }
 setupRecurringTransactions();

@@ -15,9 +15,9 @@
   // 使用者選的樣式。這兩個設定只有這份 GitHub Pages 複本在用。
   var theme = localStorage.getItem("accounting-theme");
   if (theme && theme !== "default") document.documentElement.dataset.theme = theme;
-  var fontScale = { small: 0.9, normal: 1, large: 1.15, xlarge: 1.3 }[localStorage.getItem("accounting-font-scale")];
+  var fontScale = { xsmall: 0.75, small: 0.9, normal: 1, large: 1.15, xlarge: 1.3 }[localStorage.getItem("accounting-font-scale")];
   if (fontScale) document.documentElement.style.zoom = fontScale;
   document.write('<script src="/offline/offline-backend.js"><\/script>');
 })();
 </script>
-<script src="/app.js?v=101" defer></script><script src="/sync.js?v=4" defer></script><script type="module" src="/offline/google-auth.js?v=1"></script><script src="/offline/sync-ui.js?v=11" defer></script><script src="/offline/onboarding.js?v=1" defer></script></body></html>
+<script src="/app.js?v=101" defer></script><script src="/sync.js?v=4" defer></script><script type="module" src="/offline/google-auth.js?v=1"></script><script src="/offline/sync-ui.js?v=12" defer></script><script src="/offline/onboarding.js?v=1" defer></script></body></html>

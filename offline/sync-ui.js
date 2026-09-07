@@ -438,6 +438,7 @@
     { id: "charcoal", label: "木炭灰", swatch: "#2b2f33" },
   ];
   const FONT_SCALES = [
+    { id: "xsmall", label: "更小", value: 0.75 },
     { id: "small", label: "小", value: 0.9 },
     { id: "normal", label: "中（預設）", value: 1 },
     { id: "large", label: "大", value: 1.15 },
@@ -518,51 +519,82 @@
   // 那個完整畫面——打開主選單時順便檢查一次雲端版本，有新版本就提示，
   // 沒有就直接說「目前已是最新版本」，按下去就跟完整畫面裡的立即同步一樣。
   function setupQuickSyncButton() {
-    const actions = document.querySelector(".menu-actions");
-    const annualButton = document.getElementById("menu-annual");
-    if (!actions) return;
+    // 原本放在主選單清單裡（跟「年度收支統計」同一種列表按鈕），使用者要求搬到
+    // 主畫面搜尋列右邊——先做成小圖示按鈕，後來使用者進一步要求改成長方形、
+    // 顯示「立即同步」文字，按下去之後文字本身要直接變成「下載中」（不是只有
+    // 滑鼠移過去才看得到的提示文字），所以狀態用按鈕本身的文字呈現，比圖示＋
+    // title 明顯很多。
+    const filters = document.querySelector(".filters");
+    if (!filters) return;
 
-    // 原本是獨立疊在主選單標題列上、絕對定位置中的膠囊；使用者要求改成跟「年度收支
-    // 統計」那些選單項目同一種格式（清單裡的一個按鈕），放在清單最上面（年度收支統計
-    // 上面）——直接沿用 .menu-actions button 既有的樣式，圖示＋文字兩欄，狀態文字
-    // 用 <small> 疊在標題文字下面（跟很早期「立即備份」那顆按鈕的堆疊排版一樣）。
     const button = document.createElement("button");
     button.type = "button";
-    button.id = "menu-quick-sync";
-    button.className = "menu-quick-sync";
-    button.innerHTML = '<span>☁</span><span><b>立即同步</b><small id="menu-sync-status">檢查中…</small></span>';
-    if (annualButton) annualButton.before(button);
-    else actions.prepend(button);
-
-    const status = document.getElementById("menu-sync-status");
+    button.id = "quick-sync-button";
+    button.textContent = "立即同步";
+    filters.append(button);
+    // 使用者要求跟「帳戶餘額」那個分頁籤一樣寬——那三個籤是 CSS Grid 平分寬度，
+    // 跟這裡的 flex 排版不是同一套算法，沒辦法直接共用一個 CSS 規則對出一樣的
+    // 寬度，改成量實際渲染出來的寬度、直接套用，不管螢幕多寬都會準確跟著一致。
+    // 這個按鈕剛插進畫面的當下，版面有時候還沒排好（量出來會是瀏覽器預設的
+    // 極小寬度，例如 28px），所以量測要等排版真的穩定下來才做；另外視窗大小
+    // 改變時（例如手機轉方向）三個分頁籤的寬度也會跟著變，所以也要重新量測。
+    const matchReferenceTabWidth = () => {
+      const referenceTab = document.querySelector('.view-tabs button[data-view="balances"]');
+      const width = referenceTab?.offsetWidth ?? 0;
+      if (width > 40) button.style.width = `${width}px`;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(matchReferenceTabWidth));
+    window.addEventListener("load", matchReferenceTabWidth);
+    window.addEventListener("resize", matchReferenceTabWidth);
 
     const checkStatus = async () => {
       try {
         const result = await fetch("/api/offline-sync/drive-status", { cache: "no-store" }).then((response) => response.json());
         if (!result.connected || !result.encryption_key_set) {
-          status.textContent = "尚未連結雲端同步";
+          button.textContent = "尚未連結";
+          button.title = "尚未連結雲端同步";
           button.disabled = true;
           return;
         }
         button.disabled = false;
-        status.textContent = result.remote_revision > result.local_revision
-          ? (result.remote_name ? `雲端有新版本［${result.remote_name}］` : "雲端有新版本，建議同步")
-          : "目前已是最新版本";
+        button.textContent = "立即同步";
+        button.title = result.remote_revision > result.local_revision
+          ? (result.remote_name ? `雲端有新版本［${result.remote_name}］，點一下同步` : "雲端有新版本，點一下同步")
+          : "目前已是最新版本，點一下再次同步";
       } catch (error) {
         button.disabled = false;
-        status.textContent = "";
+        button.textContent = "立即同步";
+        button.title = "立即同步";
       }
     };
 
+    // 使用者要求同步的時候要看得出「現在在下載還是上傳、檔案多大」，不是只有
+    // 一顆轉圈圈。改成分開呼叫 drive-pull／drive-push 這兩個既有的路徑（原本
+    // 「立即同步」是呼叫合併好的 drive-sync-now，兩步共用同一次 Google 檔案
+    // 清單查詢，行動網路下少一次來回；這裡為了讓使用者看到兩個階段分開顯示，
+    // 改成各自呼叫，多一次很小的清單查詢，肉眼感覺不出差異）。上傳/下載的
+    // 位元組數要等那個階段做完才知道實際大小，沒有做即時的百分比進度條。
+    const formatMb = (bytes) => (bytes / 1024 / 1024).toFixed(1) + " MB";
+
     button.addEventListener("click", async () => {
       button.disabled = true;
-      status.textContent = "同步中…";
+      button.textContent = "下載中…";
+      button.title = "下載中…";
       try {
-        const response = await fetch("/api/offline-sync/drive-sync-now", { method: "POST" });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "同步失敗");
+        const pullResponse = await fetch("/api/offline-sync/drive-pull", { method: "POST" });
+        const pullResult = await pullResponse.json();
+        if (!pullResponse.ok) throw new Error(pullResult.error || "下載失敗");
+        const downloadedText = pullResult.bytes ? `已下載 ${formatMb(pullResult.bytes)}` : "沒有新版本可下載";
+
+        button.textContent = "上傳中…";
+        button.title = `${downloadedText}，上傳中…`;
+        const pushResponse = await fetch("/api/offline-sync/drive-push", { method: "POST" });
+        const pushResult = await pushResponse.json();
+        if (!pushResponse.ok) throw new Error(pushResult.error || "上傳失敗");
+        const uploadedText = pushResult.bytes ? `已上傳 ${formatMb(pushResult.bytes)}` : "";
+
         await Promise.all([loadSummary(), loadTransactions(), loadReport(), loadBalances()]);
-        showToast("同步完成");
+        showToast(`同步完成：${downloadedText}、${uploadedText}`);
       } catch (error) {
         showToast(error.message);
       } finally {
@@ -570,7 +602,6 @@
       }
     });
 
-    document.getElementById("main-menu-open")?.addEventListener("click", checkStatus);
     checkStatus();
   }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "accounting-shell-v159";
+const CACHE_NAME = "accounting-shell-v160";
 const SHELL_ASSETS = [
   "/",
   "/app.css?v=34",
@@ -7,7 +7,7 @@ const SHELL_ASSETS = [
   "/offline.js?v=3",
   "/sync.js?v=4",
   "/offline/google-auth.js?v=1",
-  "/offline/sync-ui.js?v=13",
+  "/offline/sync-ui.js?v=14",
   "/offline/onboarding.js?v=1",
   "/manifest.webmanifest",
   // 手機離線引擎（PROJECT_SPEC.md 第 13 節）：這些檔案沒有另外做版本查詢字串，

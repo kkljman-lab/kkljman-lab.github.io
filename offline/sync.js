@@ -28,15 +28,13 @@ export class SyncError extends Error {}
 const KEEP_REVISIONS = 3;
 
 async function cleanupOldRevisions(accessToken, files) {
+  // 這台裝置在補加這段清舊檔邏輯之前，可能已經同步了很久、Drive 上堆了一大疊
+  // 從來沒清過的舊快照——第一次跑到這裡要一次清掉一大批。逐一 await 刪除的話，
+  // 手機網路每個刪除請求都要等一次來回，堆了幾十個就會讓使用者覺得同步「卡住」
+  // 超過一分鐘；改成全部同時送出去，等全部跑完（或失敗）一次結束，方便很多。
   const ordered = [...files].sort((a, b) => b.revision - a.revision);
-  for (const entry of ordered.slice(KEEP_REVISIONS)) {
-    if (!entry.id) continue;
-    try {
-      await driveDeleteFile(accessToken, entry.id);
-    } catch (_) {
-      // 清舊檔失敗不影響這次同步本身有沒有成功，下次同步再試一次即可。
-    }
-  }
+  const stale = ordered.slice(KEEP_REVISIONS).filter((entry) => entry.id);
+  await Promise.allSettled(stale.map((entry) => driveDeleteFile(accessToken, entry.id)));
 }
 
 // 幾個存在 app_settings 的小設定，跟 deviceId() 是同一種存法（key/value，沒有的話
@@ -206,8 +204,10 @@ async function pushWithContext(poolUtil, db, dbName, encryptionKey, accessToken,
   const name = `${label}-${stamp}.pacb`;
   const uploaded = await driveUploadFile(accessToken, name, encrypted, { revision: String(nextRevision), device_id: device });
   setLastSeenRevision(db, nextRevision);
-  await cleanupOldRevisions(accessToken, [...files, { id: uploaded.id, revision: nextRevision }]);
-  return { status: "pushed", revision: nextRevision, file: uploaded.name || name };
+  // 清舊檔本來就是「盡量做」的次要工作（失敗不影響這次同步成不成功），不用讓
+  // 使用者等它做完才看到「同步完成」——背景繼續清，介面先回應。
+  cleanupOldRevisions(accessToken, [...files, { id: uploaded.id, revision: nextRevision }]).catch(() => {});
+  return { status: "pushed", revision: nextRevision, file: uploaded.name || name, bytes: encrypted.byteLength };
 }
 
 // 對應桌面版 sync.py 的 pull()：下載版本編號最新的檔案、解密、合併，最後更新
@@ -230,7 +230,7 @@ async function pullWithContext(poolUtil, db, encryptionKey, accessToken, files) 
   const decrypted = await decryptData(raw, encryptionKey);
   const result = await mergeRemoteSnapshot(poolUtil, db, decrypted);
   setLastSeenRevision(db, remoteRevision);
-  return { status: "merged", revision: remoteRevision, ...result };
+  return { status: "merged", revision: remoteRevision, bytes: raw.byteLength, ...result };
 }
 
 // 畫面上「立即同步」按鈕背後就是這個：先下載合併對方的更新，再把（可能已經合併

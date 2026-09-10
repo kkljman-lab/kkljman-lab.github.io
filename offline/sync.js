@@ -156,7 +156,16 @@ export async function resolveDriveCredentials(db) {
 async function driveAccessToken(db, credentials) {
   const refreshToken = driveRefreshToken(db);
   if (!refreshToken) throw new SyncError("尚未連結 Google 帳號");
-  return refreshAccessToken(refreshToken, credentials.clientId, credentials.clientSecret);
+  try {
+    return await refreshAccessToken(refreshToken, credentials.clientId, credentials.clientSecret);
+  } catch (error) {
+    // 這個 App 的 Google 授權沒有正式送審（純粹自己用），過一段時間沒有動靜
+    // 可能會被 Google 收回——原始錯誤訊息（例如「Token has been expired or
+    // revoked.」）使用者看了不知道要做什麼，這裡明確講清楚要去哪裡、按哪個
+    // 按鈕解決。維持丟出 DriveError（不是 SyncError），driveStatus() 才認得出
+    // 這是「授權失效」這一類，能繼續正常顯示狀態畫面，而不是整個報錯壞掉。
+    throw new DriveError(`Google 帳號授權已失效，請到主選單「帳務同步」按「重新連結 Google 帳號」。（${error.message}）`);
+  }
 }
 
 export async function driveStatus(db, credentials) {

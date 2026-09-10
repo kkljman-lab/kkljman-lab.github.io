@@ -212,7 +212,14 @@
         await Promise.all([loadSummary(), loadTransactions(), loadReport(), loadBalances()]);
         if (silent) showToast("已自動完成每日同步");
       } catch (error) {
-        if (!silent) messageEl.textContent = error.message;
+        if (!silent) {
+          messageEl.textContent = error.message;
+        } else if (error.message.includes("重新連結 Google 帳號")) {
+          // 每天自動同步失敗大多是暫時的（那時候剛好沒網路、還沒連結），不用每次
+          // 都吵使用者；但「授權失效」這種不會自己好、要使用者動手處理的狀況，
+          // 值得跳一個提示，不然使用者可能好幾天都不知道同步其實一直失敗。
+          showToast(error.message);
+        }
       } finally {
         if (ticker) clearInterval(ticker);
         await refresh();

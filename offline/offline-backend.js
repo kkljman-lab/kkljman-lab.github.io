@@ -5,6 +5,17 @@
 // 只有在啟用離線引擎時才生效（見 index.html 條件式載入這支檔案的判斷），
 // 桌面版平常還是走真正的 Python 後端，不受影響。見 PROJECT_SPEC.md 13.3 第 2 項。
 (function () {
+  // db-worker.js 的 openState() 偵測到「這台裝置本來該有資料、這次卻讀到空
+  // 資料庫」時會直接丟出這個訊息（不會安靜地灌入起始分類）——初次載入時
+  // loadSummary／loadTransactions／loadReport／loadBalances 幾乎會同時打好幾個
+  // API，全部都會踩到同一個錯誤，如果每個都跳一次 alert 會連續彈好幾個一模
+  // 一樣的視窗，這裡只在同一次頁面載入裡跳第一次。這幾個資料載入函式本身
+  // 沒有檢查 fetch 的狀態碼，安靜地把 {error:"..."} 這種錯誤內容當成正常
+  // 資料使用只會讓畫面顯示怪怪的數字，不會讓使用者知道發生什麼事，所以
+  // 用 alert() 確保這個嚴重狀況一定會被看到。
+  let storageConflictAlerted = false;
+  const STORAGE_CONFLICT_MARKER = "這次打開時讀不到資料";
+
   const worker = new Worker("/offline/db-worker.js", { type: "module" });
   // 手機第一次載入時最慢的一段，不是網路，是 db-worker.js 裡的 getState()——
   // 要載入 SQLite WASM 引擎、設定 OPFS 儲存池、跑一次 schema.sql，這些都是真正的
@@ -16,7 +27,15 @@
   // 接近完成，感覺上的等待時間會縮短。這個訊息的 id 沒有加進下面的 pending
   // Map，回應會直接被下面共用的 message 監聽器忽略（跟 __offlineDebugExec／
   // __offlineResetDevice 用不同 id 前綴避開衝突是同一個做法）。
-  worker.postMessage({ id: "warmup", type: "ready" });
+  // 「這台裝置已經做過新裝置引導」的旗標存在 localStorage（見 onboarding.js），
+  // 跟著這第一個訊息一起帶給 db-worker.js：如果這面旗標是 true，代表這台裝置
+  // 本來就應該有真正的帳本資料，不是第一次使用。OPFS SAHPool 在某些情況下
+  // （例如重新整理時，舊分頁的連線還沒真正釋放，新舊兩個連線搶同一個儲存池，
+  // 見 PROJECT_SPEC.md 13.4）可能會意外打開一個看起來全新、實際上是空的
+  // 資料庫——db-worker.js 靠這面旗標分辨「這是真的全新裝置」還是「這次打開
+  // 有異常」，避免後者被誤判成前者，安靜地在空資料庫上灌入起始分類、把使用者
+  // 導向繼續在這個假的空白帳本上記帳。
+  worker.postMessage({ id: "warmup", type: "ready", onboarded: localStorage.getItem("accounting-offline-onboarded") === "1" });
   let nextId = 0;
   const pending = new Map();
   worker.addEventListener("message", (event) => {
@@ -156,6 +175,10 @@
         headers: { "Content-Type": "application/json; charset=utf-8" },
       });
     } catch (error) {
+      if (!storageConflictAlerted && error.message.includes(STORAGE_CONFLICT_MARKER)) {
+        storageConflictAlerted = true;
+        alert(error.message);
+      }
       return new Response(JSON.stringify({ error: "離線引擎發生錯誤：" + error.message }), {
         status: 500,
         headers: { "Content-Type": "application/json; charset=utf-8" },

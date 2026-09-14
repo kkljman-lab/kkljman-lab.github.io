@@ -18,6 +18,10 @@ import { exchangeCode } from "/offline/drive.js";
 
 const DB_NAME = "/personal-accounting.sqlite3";
 let statePromise = null;
+// 由 offline-backend.js 建立這個 worker 後送出的第一個訊息（type "ready"）帶著
+// localStorage 的「已完成新裝置引導」旗標——見下面 openState() 為什麼要用這個
+// 判斷「資料庫是空的」到底是「這本來就是全新裝置」還是「這次打開有異常」。
+let deviceExpectedToHaveData = false;
 
 function makeDbFacade(sqlite3Db) {
   return {
@@ -71,7 +75,23 @@ async function openState() {
   // 只在完全沒有任何帳戶時才會灌入，之後裝置真的同步到別人的資料庫時，這些
   // 分類本來就是用固定 uuid5 算出來的 id，跟真正的資料合併時不會產生重複。
   const hasAnyAccount = db.one("SELECT 1 AS n FROM accounts LIMIT 1");
-  if (!hasAnyAccount) await seedStarterLedger(db);
+  if (!hasAnyAccount) {
+    if (deviceExpectedToHaveData) {
+      // 這台裝置本來就做過新裝置引導、應該已經有真正的帳本資料（見上面
+      // deviceExpectedToHaveData 的宣告註解）——絕對不能把這次的空資料庫安靜地
+      // 當成「這是全新裝置」灌入起始分類，那樣使用者會以為帳本被清空，然後
+      // 在這個假的空白帳本上繼續記帳；等真正的資料復原回來，這段時間新增的
+      // 交易反而變成兜不起來的孤兒。改成直接丟出錯誤讓使用者知道這次打開
+      // 有異常，引導去按「立即同步」從 Google Drive 拉回資料，而不是繼續用
+      // 這個看起來空白、其實不對勁的帳本。
+      throw new Error(
+        "這台裝置的本機帳本這次打開時讀不到資料（可能是重新整理時跟另一個分頁的儲存空間卡到），"
+        + "資料應該還在 Google Drive 上——請先關閉其他還開著這個網站的分頁，"
+        + "再到主選單「帳務同步」按「立即同步」拉回資料，暫時不要在這裡新增交易。"
+      );
+    }
+    await seedStarterLedger(db);
+  }
   return { sqlite3, sqlite3Db, poolUtil, db };
 }
 
@@ -441,7 +461,10 @@ async function handleApi(db, poolUtil, { method, path, query, body, headers }) {
 }
 
 self.addEventListener("message", async (event) => {
-  const { id, type, sql, bind, request } = event.data || {};
+  const { id, type, sql, bind, request, onboarded } = event.data || {};
+  // 一定要在呼叫 getState()（觸發 openState() 判斷資料庫是不是空的）之前先
+  // 存好這面旗標——offline-backend.js 建立 worker 後送出的第一個訊息就帶著它。
+  if (typeof onboarded === "boolean") deviceExpectedToHaveData = onboarded;
   try {
     const { sqlite3, sqlite3Db, db, poolUtil } = await getState();
     if (type === "reset") {

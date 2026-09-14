@@ -1,9 +1,9 @@
-const CACHE_NAME = "accounting-shell-v166";
+const CACHE_NAME = "accounting-shell-v167";
 const SHELL_ASSETS = [
   "/",
   "/app.css?v=34",
   "/menu.css?v=20",
-  "/app.js?v=105",
+  "/app.js?v=106",
   "/offline.js?v=3",
   "/sync.js?v=4",
   "/offline/google-auth.js?v=1",

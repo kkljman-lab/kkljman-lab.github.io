@@ -1,4 +1,4 @@
-const CACHE_NAME = "accounting-shell-v168";
+const CACHE_NAME = "accounting-shell-v169";
 const SHELL_ASSETS = [
   "/",
   "/app.css?v=34",

@@ -84,10 +84,19 @@ async function openState() {
       // 交易反而變成兜不起來的孤兒。改成直接丟出錯誤讓使用者知道這次打開
       // 有異常，引導去按「立即同步」從 Google Drive 拉回資料，而不是繼續用
       // 這個看起來空白、其實不對勁的帳本。
+      //
+      // GitHub Pages 那份給朋友用的複本完全沒有 Google Drive 同步（見
+      // PROJECT_SPEC.md），叫他們「去按立即同步拉回資料」是個不存在的功能、
+      // 只會讓人更困惑——這裡用 self.location.hostname 判斷是不是那份複本
+      // （dedicated worker 的 location 跟建立它的頁面同源，這裡讀得到），
+      // 分兩種訊息：有 Drive 可以拉、跟只能先試著關掉其他分頁重開看看。
+      const isGithubPagesCopy = self.location.hostname.endsWith(".github.io");
+      const recovery = isGithubPagesCopy
+        ? "請先把其他還開著這個網站的分頁全部關掉、或整個瀏覽器 App 完全關閉後再重新打開一次——資料通常還在，只是暫時讀不到。如果重開後還是一樣，這份資料目前沒有雲端備份可以救回來，只能靠之前有沒有做過「匯出 CSV」備份。"
+        : "資料應該還在 Google Drive 上——請先關閉其他還開著這個網站的分頁，再到主選單「帳務同步」按「立即同步」拉回資料。";
       throw new Error(
-        "這台裝置的本機帳本這次打開時讀不到資料（可能是重新整理時跟另一個分頁的儲存空間卡到），"
-        + "資料應該還在 Google Drive 上——請先關閉其他還開著這個網站的分頁，"
-        + "再到主選單「帳務同步」按「立即同步」拉回資料，暫時不要在這裡新增交易。"
+        "這台裝置的本機帳本這次打開時讀不到資料（可能是重新整理時跟另一個分頁的儲存空間卡到）。"
+        + recovery + "暫時不要在這裡新增交易。"
       );
     }
     await seedStarterLedger(db);

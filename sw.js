@@ -1,4 +1,4 @@
-const CACHE_NAME = "accounting-shell-v169";
+const CACHE_NAME = "accounting-shell-v170";
 const SHELL_ASSETS = [
   "/",
   "/app.css?v=34",
@@ -129,7 +129,8 @@ self.addEventListener("fetch", (event) => {
     || url.pathname === "/logout"
   ) return;
 
-  if (request.mode === "navigate") {
+  // privacy.html 是獨立的靜態頁面（Google OAuth 要求的隱私權政策網址），不能被當成 App 外殼回應或覆寫外殼快取。
+  if (request.mode === "navigate" && url.pathname !== "/privacy.html") {
     // 原本是「先試網路，失敗才退回快取」——手機透過 Tailscale 連到「電腦有開機、
     // 但 start-local.cmd 沒在跑」時，連線不會馬上被拒絕，會安靜卡著等逾時，體感
     // 像當機。改成「快取優先，背景偷偷再更新快取」：只要之前開過一次、已經有快取，
